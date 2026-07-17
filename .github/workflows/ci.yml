@@ -15,16 +15,14 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
-      - uses: bufbuild/buf-action@v1
-        with:
-          setup_only: true
+      - run: make tools
       - run: make lint
       - name: breaking check (PRs only)
         if: github.event_name == 'pull_request'
-        run: buf breaking --against ".git#branch=origin/main"
+        run: make breaking BREAKING_BASELINE=origin/main
       - name: generated code is current
         run: |
-          make tools
           make proto
           git diff --exit-code -- gen/
+          test -z "$(git ls-files --others --exclude-standard -- gen/)"
       - run: make test

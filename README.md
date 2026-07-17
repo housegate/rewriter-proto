@@ -20,7 +20,7 @@ import pb "github.com/housegate/rewriter-proto/gen/pb"
 ## Build and regenerate
 
 ```bash
-make tools    # install pinned protoc-gen-go and protoc-gen-go-grpc
+make tools    # install pinned buf, protoc-gen-go, and protoc-gen-go-grpc
 make proto    # regenerate gen/pb with buf
 make lint     # lint the protobuf schema
 make test     # build, vet, and test the generated Go module
