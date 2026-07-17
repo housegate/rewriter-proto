@@ -1,0 +1,13 @@
+version: v2
+modules:
+  - path: proto
+lint:
+  use: [BASIC]
+  # The contract predates Buf's package-directory convention and intentionally
+  # stays flat at proto/rewriter.proto. Its existing mixed-case enum values are
+  # also wire/API surface, so migration must preserve them.
+  except:
+    - ENUM_VALUE_UPPER_SNAKE_CASE
+    - PACKAGE_DIRECTORY_MATCH
+breaking:
+  use: [FILE]
