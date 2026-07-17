@@ -17,8 +17,12 @@ lint:
 	buf lint
 
 breaking:
+	@if ! git rev-parse --verify --quiet "$(BREAKING_BASELINE)^{commit}" >/dev/null; then \
+		echo "Breaking baseline does not resolve: $(BREAKING_BASELINE)" >&2; \
+		exit 1; \
+	fi
 	@if git ls-tree -r --name-only "$(BREAKING_BASELINE)" -- proto | grep -Eq '\.proto$$'; then \
-		buf breaking --against ".git#branch=$(BREAKING_BASELINE)"; \
+		buf breaking --against ".git#ref=$(BREAKING_BASELINE)"; \
 	else \
 		echo "No protobuf baseline on $(BREAKING_BASELINE); skipping initial breaking check"; \
 	fi
