@@ -258,6 +258,54 @@ message RewriteTableDynamicArgs {
     // and `logical_database_to_remote_upstream_index` for the routing
     // map that picks an entry here.
     map<string, RemoteUpstream> remote_upstreams = 8;
+
+    // Storage-integrity read surface (housegate Spec G). When present and
+    // `tables` is non-empty, every SELECT-family table reference whose
+    // logical key (`<db>.<table>`, db resolved from the SQL qualifier or
+    // upstream_logical_database_in_context) is in `tables` is rewritten to a
+    // derived table over the safe/unsafe physical tables INSTEAD of the
+    // database_map path; EXISTS TABLE maps to safe_table; DESCRIBE becomes a
+    // system.columns SELECT that hides reserved_row_id_column; every other
+    // statement touching such a table (ALTER/DROP/TRUNCATE/RENAME/EXCHANGE/
+    // OPTIMIZE/CREATE/GRANT/REVOKE/SHOW CREATE) rejects with
+    // UnsupportedStatement. INSERT is deliberately NOT rejected here (the
+    // caller's signed ingress owns that decision); it is rewritten through
+    // the ordinary path and reported with AccessedTable.is_storage_integrity.
+    // Any user identifier equal to reserved_row_id_column in a statement
+    // touching an SI table rejects with RewriteError.
+    StorageIntegrityArgs storage_integrity = 12;
+}
+
+// Positive proof that a backend understood and enforced the SI contract.
+// Additive protobuf fields alone are insufficient because an older backend
+// can ignore them and still return RewriteCode=Success.
+enum StorageIntegrityContractVersion {
+    STORAGE_INTEGRITY_CONTRACT_UNSPECIFIED = 0;
+    STORAGE_INTEGRITY_CONTRACT_V1 = 1;
+}
+
+// Per-request storage-integrity surface description. See
+// RewriteTableDynamicArgs.storage_integrity for the semantics.
+message StorageIntegrityArgs {
+    enum ReadMode {
+        READ_MODE_UNSPECIFIED = 0;    // treated as SAFE
+        READ_MODE_SAFE = 1;           // (SELECT * EXCEPT (rid) FROM safe_table)
+        READ_MODE_UNSAFE_LATEST = 2;  // safe UNION ALL unsafe WHERE _part NOT IN (excluded_unsafe_parts)
+    }
+    message Table {
+        string safe_table = 1;                      // physical "hg_safe.db__t"
+        string unsafe_table = 2;                    // physical "hg_unsafe.db__t"
+        repeated string excluded_unsafe_parts = 3;  // promoted, not yet cleaned unsafe part names
+    }
+    // key = logical "db.table" exactly as the user may write it after the
+    // caller resolved USE (i.e. after upstream_logical_database_in_context).
+    map<string, Table> tables = 1;
+    ReadMode read_mode = 2;
+    // Reserved per-row identity column; "" means "_hg_row_id".
+    string reserved_row_id_column = 3;
+    // Required to be V1 when tables is non-empty. Backends acknowledge an
+    // accepted version on every response path; see the top-level enum.
+    StorageIntegrityContractVersion contract_version = 4;
 }
 
 // Selects which mode (above) applies to this rewrite.
@@ -562,6 +610,11 @@ enum StatementType {
 
     // DROP VIEW <v>
     STATEMENT_TYPE_DROP_VIEW = 21;
+
+    // DESCRIBE [TABLE] [db.]t (Spec E D6 / Spec G §4.3). Storage-integrity
+    // tables are rewritten to a system.columns SELECT; others resolve like
+    // EXISTS TABLE (E) or pass through until E lands (G-minimal).
+    STATEMENT_TYPE_DESCRIBE = 22;
 }
 
 // Whether the statement carried an existence-check clause. CREATE-family
@@ -682,6 +735,11 @@ message RewriteSQLResponse {
     // Set as soon as the SQL parses, so it is accurate even on a rejected
     // (non-Success) response; only SyntaxError leaves it UNSPECIFIED.
     ExistenceClause existence_clause = 14;
+
+    // Echoed as V1 on every response path only after the backend accepted an
+    // SI request whose StorageIntegrityArgs.tables is non-empty and whose
+    // contract_version is V1. Zero for non-SI or unsupported-version calls.
+    StorageIntegrityContractVersion storage_integrity_contract_version = 16;
 }
 
 // One table or database the SQL referenced before rewrite, with the
@@ -724,6 +782,11 @@ message AccessedTable {
     string logical_database = 3;
     string physical_database = 4;
     bool is_remote = 5;
+    // True iff this access resolved to a storage-integrity table (a key of
+    // RewriteTableDynamicArgs.storage_integrity.tables). Callers use it to
+    // gate writes and to fail closed on rejected responses; the logical
+    // names above are unchanged so auth/usage keep working on them.
+    bool is_storage_integrity = 6;
 }
 
 // =============================================================================
