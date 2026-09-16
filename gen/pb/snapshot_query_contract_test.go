@@ -57,6 +57,8 @@ func TestSnapshotQueryMessageContracts(t *testing.T) {
 	assertMessageContract(t, &pb.SnapshotQueryColumn{}, []fieldContract{
 		{"name", 1, protoreflect.StringKind, optional, ""},
 		{"type", 2, protoreflect.StringKind, optional, ""},
+		{"generation", 3, protoreflect.EnumKind, optional, "rewriter.SnapshotQueryColumnGeneration"},
+		{"default_expression", 4, protoreflect.StringKind, optional, ""},
 	})
 	assertMessageContract(t, &pb.SnapshotQueryCatalogTable{}, []fieldContract{
 		{"database", 1, protoreflect.StringKind, optional, ""},
@@ -119,8 +121,8 @@ func analysisFixture() *pb.AnalyzeSnapshotQueryRequest {
 				TableId:    "table-copy-id",
 				SchemaHash: "copy-schema-sha256",
 				Columns: []*pb.SnapshotQueryColumn{
-					{Name: "copy_a", Type: "UInt64"},
-					{Name: "copy_b", Type: "String"},
+					{Name: "copy_a", Type: "UInt64", Generation: pb.SnapshotQueryColumnGeneration_SNAPSHOT_QUERY_COLUMN_GENERATION_ORDINARY},
+					{Name: "copy_b", Type: "String", Generation: pb.SnapshotQueryColumnGeneration_SNAPSHOT_QUERY_COLUMN_GENERATION_ORDINARY},
 				},
 			},
 			{
@@ -129,8 +131,8 @@ func analysisFixture() *pb.AnalyzeSnapshotQueryRequest {
 				TableId:    "table-events-id",
 				SchemaHash: "events-schema-sha256",
 				Columns: []*pb.SnapshotQueryColumn{
-					{Name: "event_value", Type: "Int32"},
-					{Name: "event_time", Type: "DateTime64(3)"},
+					{Name: "event_value", Type: "Int32", Generation: pb.SnapshotQueryColumnGeneration_SNAPSHOT_QUERY_COLUMN_GENERATION_ORDINARY},
+					{Name: "event_time", Type: "DateTime64(3)", Generation: pb.SnapshotQueryColumnGeneration_SNAPSHOT_QUERY_COLUMN_GENERATION_ORDINARY},
 				},
 			},
 		},
@@ -142,6 +144,17 @@ func analysisFixture() *pb.AnalyzeSnapshotQueryRequest {
 			RandomFloat64Values: []float64{0.125, 0.875},
 		},
 	}
+}
+
+func analysisMetadataTransportFixture() *pb.AnalyzeSnapshotQueryRequest {
+	request := analysisFixture()
+	request.Catalog[0].Columns[1].Generation = pb.SnapshotQueryColumnGeneration_SNAPSHOT_QUERY_COLUMN_GENERATION_DEFAULT
+	request.Catalog[0].Columns[1].DefaultExpression = "'copy-default'"
+	request.Catalog[1].Columns[0].Generation = pb.SnapshotQueryColumnGeneration_SNAPSHOT_QUERY_COLUMN_GENERATION_MATERIALIZED
+	request.Catalog[1].Columns[0].DefaultExpression = "toInt32(source_value)"
+	request.Catalog[1].Columns[1].Generation = pb.SnapshotQueryColumnGeneration_SNAPSHOT_QUERY_COLUMN_GENERATION_ALIAS
+	request.Catalog[1].Columns[1].DefaultExpression = "toDateTime64(event_ns / 1000000, 3)"
+	return request
 }
 
 func roundTrip(t *testing.T, original, decoded proto.Message) {
@@ -159,7 +172,9 @@ func roundTrip(t *testing.T, original, decoded proto.Message) {
 }
 
 func TestSnapshotQueryMessagesRoundTripEveryField(t *testing.T) {
-	analysis := analysisFixture()
+	// This deliberately ineligible metadata fixture tests protobuf transport
+	// only. It is never treated as a successful analysis or runtime admission.
+	analysis := analysisMetadataTransportFixture()
 	decodedAnalysis := &pb.AnalyzeSnapshotQueryRequest{}
 	roundTrip(t, analysis, decodedAnalysis)
 	if !decodedAnalysis.ProtoReflect().Has(decodedAnalysis.ProtoReflect().Descriptor().Fields().ByName("inputs")) || decodedAnalysis.GetInputs().GetNowUnixNs() != 1700000000123456789 {
@@ -167,6 +182,27 @@ func TestSnapshotQueryMessagesRoundTripEveryField(t *testing.T) {
 	}
 	if got := []string{decodedAnalysis.Catalog[0].Columns[0].Name, decodedAnalysis.Catalog[0].Columns[1].Name}; !reflect.DeepEqual(got, []string{"copy_a", "copy_b"}) {
 		t.Fatalf("catalog schema order = %v", got)
+	}
+	if got := []pb.SnapshotQueryColumnGeneration{
+		decodedAnalysis.Catalog[0].Columns[0].Generation,
+		decodedAnalysis.Catalog[0].Columns[1].Generation,
+		decodedAnalysis.Catalog[1].Columns[0].Generation,
+		decodedAnalysis.Catalog[1].Columns[1].Generation,
+	}; !reflect.DeepEqual(got, []pb.SnapshotQueryColumnGeneration{
+		pb.SnapshotQueryColumnGeneration_SNAPSHOT_QUERY_COLUMN_GENERATION_ORDINARY,
+		pb.SnapshotQueryColumnGeneration_SNAPSHOT_QUERY_COLUMN_GENERATION_DEFAULT,
+		pb.SnapshotQueryColumnGeneration_SNAPSHOT_QUERY_COLUMN_GENERATION_MATERIALIZED,
+		pb.SnapshotQueryColumnGeneration_SNAPSHOT_QUERY_COLUMN_GENERATION_ALIAS,
+	}) {
+		t.Fatalf("catalog generation metadata or schema order = %v", got)
+	}
+	if got := []string{
+		decodedAnalysis.Catalog[0].Columns[0].DefaultExpression,
+		decodedAnalysis.Catalog[0].Columns[1].DefaultExpression,
+		decodedAnalysis.Catalog[1].Columns[0].DefaultExpression,
+		decodedAnalysis.Catalog[1].Columns[1].DefaultExpression,
+	}; !reflect.DeepEqual(got, []string{"", "'copy-default'", "toInt32(source_value)", "toDateTime64(event_ns / 1000000, 3)"}) {
+		t.Fatalf("catalog expressions or schema order = %v", got)
 	}
 	if got := decodedAnalysis.Inputs.RandomUint64Values; !reflect.DeepEqual(got, []uint64{11, 22}) {
 		t.Fatalf("random input order = %v", got)
@@ -195,7 +231,7 @@ func TestSnapshotQueryMessagesRoundTripEveryField(t *testing.T) {
 	}
 
 	prepare := &pb.PrepareSnapshotQueryRequest{
-		Analysis: analysis,
+		Analysis: analysisFixture(),
 		Bindings: []*pb.SnapshotScratchBinding{
 			{TableId: "read-a-id", ScratchDatabase: "scratch_db_a", ScratchTable: "scratch_table_a"},
 			{TableId: "read-b-id", ScratchDatabase: "scratch_db_b", ScratchTable: "scratch_table_b"},
@@ -213,7 +249,7 @@ func TestSnapshotQueryMessagesRoundTripEveryField(t *testing.T) {
 	prepareResponse := &pb.PrepareSnapshotQueryResponse{
 		ContractVersion: 1,
 		QueryProfileId:  "snapshot-profile-v1",
-		Code:            pb.SnapshotQueryCode_UNSUPPORTED,
+		Code:            pb.SnapshotQueryCode_SUCCESS,
 		Message:         "prepare-message",
 		SelectSql:       "SELECT event_value AS copy_a, 7 AS copy_b FROM scratch_db_a.scratch_table_a",
 		TargetTableId:   "table-copy-id",
@@ -241,6 +277,53 @@ func TestSnapshotQueryCodeValuesAreFrozen(t *testing.T) {
 		if int32(value) != number {
 			t.Errorf("%s = %d, want %d", value, value, number)
 		}
+	}
+}
+
+func TestSnapshotQueryColumnGenerationValuesAreFrozen(t *testing.T) {
+	want := map[pb.SnapshotQueryColumnGeneration]int32{
+		pb.SnapshotQueryColumnGeneration_SNAPSHOT_QUERY_COLUMN_GENERATION_UNSPECIFIED:  0,
+		pb.SnapshotQueryColumnGeneration_SNAPSHOT_QUERY_COLUMN_GENERATION_ORDINARY:     1,
+		pb.SnapshotQueryColumnGeneration_SNAPSHOT_QUERY_COLUMN_GENERATION_DEFAULT:      2,
+		pb.SnapshotQueryColumnGeneration_SNAPSHOT_QUERY_COLUMN_GENERATION_MATERIALIZED: 3,
+		pb.SnapshotQueryColumnGeneration_SNAPSHOT_QUERY_COLUMN_GENERATION_ALIAS:        4,
+		pb.SnapshotQueryColumnGeneration_SNAPSHOT_QUERY_COLUMN_GENERATION_OTHER:        5,
+	}
+	for value, number := range want {
+		if int32(value) != number {
+			t.Errorf("%s = %d, want %d", value, value, number)
+		}
+	}
+}
+
+func TestLegacySnapshotQueryColumnWireDefaultsToUnspecifiedGeneration(t *testing.T) {
+	// Exact proto3 wire bytes from an old name/type-only client:
+	// name="old_column", type="UInt64", with no tags 3 or 4.
+	legacyWire := []byte{0x0a, 0x0a, 'o', 'l', 'd', '_', 'c', 'o', 'l', 'u', 'm', 'n', 0x12, 0x06, 'U', 'I', 'n', 't', '6', '4'}
+	column := &pb.SnapshotQueryColumn{}
+	if err := proto.Unmarshal(legacyWire, column); err != nil {
+		t.Fatal(err)
+	}
+	if column.Name != "old_column" || column.Type != "UInt64" {
+		t.Fatalf("legacy fields = (%q, %q)", column.Name, column.Type)
+	}
+	if column.Generation != pb.SnapshotQueryColumnGeneration_SNAPSHOT_QUERY_COLUMN_GENERATION_UNSPECIFIED || column.DefaultExpression != "" {
+		t.Fatalf("missing metadata = (%s, %q), want UNSPECIFIED and empty; runtime handlers must reject it rather than infer ordinary", column.Generation, column.DefaultExpression)
+	}
+}
+
+func TestUnknownSnapshotQueryColumnGenerationIsPreservedForHandlerRejection(t *testing.T) {
+	const unknownGeneration = pb.SnapshotQueryColumnGeneration(127)
+	original := &pb.SnapshotQueryColumn{
+		Name:              "future_column",
+		Type:              "String",
+		Generation:        unknownGeneration,
+		DefaultExpression: "future_expression()",
+	}
+	decoded := &pb.SnapshotQueryColumn{}
+	roundTrip(t, original, decoded)
+	if decoded.Generation != unknownGeneration {
+		t.Fatalf("unknown generation = %d, want preserved value %d for future runtime rejection", decoded.Generation, unknownGeneration)
 	}
 }
 
