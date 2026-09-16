@@ -31,10 +31,12 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	RewriterService_MaterializeSQL_FullMethodName      = "/rewriter.RewriterService/MaterializeSQL"
-	RewriterService_Rewrite_FullMethodName             = "/rewriter.RewriterService/Rewrite"
-	RewriterService_RewriteErrorMessage_FullMethodName = "/rewriter.RewriterService/RewriteErrorMessage"
-	RewriterService_Optimize_FullMethodName            = "/rewriter.RewriterService/Optimize"
+	RewriterService_MaterializeSQL_FullMethodName       = "/rewriter.RewriterService/MaterializeSQL"
+	RewriterService_Rewrite_FullMethodName              = "/rewriter.RewriterService/Rewrite"
+	RewriterService_RewriteErrorMessage_FullMethodName  = "/rewriter.RewriterService/RewriteErrorMessage"
+	RewriterService_Optimize_FullMethodName             = "/rewriter.RewriterService/Optimize"
+	RewriterService_AnalyzeSnapshotQuery_FullMethodName = "/rewriter.RewriterService/AnalyzeSnapshotQuery"
+	RewriterService_PrepareSnapshotQuery_FullMethodName = "/rewriter.RewriterService/PrepareSnapshotQuery"
 )
 
 // RewriterServiceClient is the client API for RewriterService service.
@@ -52,6 +54,13 @@ type RewriterServiceClient interface {
 	// and a non-OK OptimizeCode — callers can always fall back to running
 	// the input SQL unchanged.
 	Optimize(ctx context.Context, in *OptimizeRequest, opts ...grpc.CallOption) (*OptimizeResponse, error)
+	// Analyze and classify a statement without preparing scratch-table SQL.
+	// An unavailable implementation returns the transport status UNIMPLEMENTED;
+	// callers must not treat that status as an application-level code.
+	AnalyzeSnapshotQuery(ctx context.Context, in *AnalyzeSnapshotQueryRequest, opts ...grpc.CallOption) (*AnalyzeSnapshotQueryResponse, error)
+	// Revalidate analysis and bind its exact read set to scratch tables.
+	// An unavailable implementation returns the transport status UNIMPLEMENTED.
+	PrepareSnapshotQuery(ctx context.Context, in *PrepareSnapshotQueryRequest, opts ...grpc.CallOption) (*PrepareSnapshotQueryResponse, error)
 }
 
 type rewriterServiceClient struct {
@@ -102,6 +111,26 @@ func (c *rewriterServiceClient) Optimize(ctx context.Context, in *OptimizeReques
 	return out, nil
 }
 
+func (c *rewriterServiceClient) AnalyzeSnapshotQuery(ctx context.Context, in *AnalyzeSnapshotQueryRequest, opts ...grpc.CallOption) (*AnalyzeSnapshotQueryResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AnalyzeSnapshotQueryResponse)
+	err := c.cc.Invoke(ctx, RewriterService_AnalyzeSnapshotQuery_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *rewriterServiceClient) PrepareSnapshotQuery(ctx context.Context, in *PrepareSnapshotQueryRequest, opts ...grpc.CallOption) (*PrepareSnapshotQueryResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(PrepareSnapshotQueryResponse)
+	err := c.cc.Invoke(ctx, RewriterService_PrepareSnapshotQuery_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // RewriterServiceServer is the server API for RewriterService service.
 // All implementations must embed UnimplementedRewriterServiceServer
 // for forward compatibility.
@@ -117,6 +146,13 @@ type RewriterServiceServer interface {
 	// and a non-OK OptimizeCode — callers can always fall back to running
 	// the input SQL unchanged.
 	Optimize(context.Context, *OptimizeRequest) (*OptimizeResponse, error)
+	// Analyze and classify a statement without preparing scratch-table SQL.
+	// An unavailable implementation returns the transport status UNIMPLEMENTED;
+	// callers must not treat that status as an application-level code.
+	AnalyzeSnapshotQuery(context.Context, *AnalyzeSnapshotQueryRequest) (*AnalyzeSnapshotQueryResponse, error)
+	// Revalidate analysis and bind its exact read set to scratch tables.
+	// An unavailable implementation returns the transport status UNIMPLEMENTED.
+	PrepareSnapshotQuery(context.Context, *PrepareSnapshotQueryRequest) (*PrepareSnapshotQueryResponse, error)
 	mustEmbedUnimplementedRewriterServiceServer()
 }
 
@@ -138,6 +174,12 @@ func (UnimplementedRewriterServiceServer) RewriteErrorMessage(context.Context, *
 }
 func (UnimplementedRewriterServiceServer) Optimize(context.Context, *OptimizeRequest) (*OptimizeResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Optimize not implemented")
+}
+func (UnimplementedRewriterServiceServer) AnalyzeSnapshotQuery(context.Context, *AnalyzeSnapshotQueryRequest) (*AnalyzeSnapshotQueryResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method AnalyzeSnapshotQuery not implemented")
+}
+func (UnimplementedRewriterServiceServer) PrepareSnapshotQuery(context.Context, *PrepareSnapshotQueryRequest) (*PrepareSnapshotQueryResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method PrepareSnapshotQuery not implemented")
 }
 func (UnimplementedRewriterServiceServer) mustEmbedUnimplementedRewriterServiceServer() {}
 func (UnimplementedRewriterServiceServer) testEmbeddedByValue()                         {}
@@ -232,6 +274,42 @@ func _RewriterService_Optimize_Handler(srv interface{}, ctx context.Context, dec
 	return interceptor(ctx, in, info, handler)
 }
 
+func _RewriterService_AnalyzeSnapshotQuery_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AnalyzeSnapshotQueryRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RewriterServiceServer).AnalyzeSnapshotQuery(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: RewriterService_AnalyzeSnapshotQuery_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RewriterServiceServer).AnalyzeSnapshotQuery(ctx, req.(*AnalyzeSnapshotQueryRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _RewriterService_PrepareSnapshotQuery_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PrepareSnapshotQueryRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RewriterServiceServer).PrepareSnapshotQuery(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: RewriterService_PrepareSnapshotQuery_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RewriterServiceServer).PrepareSnapshotQuery(ctx, req.(*PrepareSnapshotQueryRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // RewriterService_ServiceDesc is the grpc.ServiceDesc for RewriterService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -254,6 +332,14 @@ var RewriterService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Optimize",
 			Handler:    _RewriterService_Optimize_Handler,
+		},
+		{
+			MethodName: "AnalyzeSnapshotQuery",
+			Handler:    _RewriterService_AnalyzeSnapshotQuery_Handler,
+		},
+		{
+			MethodName: "PrepareSnapshotQuery",
+			Handler:    _RewriterService_PrepareSnapshotQuery_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

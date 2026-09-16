@@ -603,6 +603,84 @@ func (ExistenceClause) EnumDescriptor() ([]byte, []int) {
 	return file_rewriter_proto_rawDescGZIP(), []int{6}
 }
 
+// Result vocabulary shared by AnalyzeSnapshotQuery and PrepareSnapshotQuery.
+//
+// The RPC contract version is exactly 1. An application-level response
+// acknowledges the request only by echoing contract_version=1 and the exact
+// query_profile_id after the backend has established that profile is installed
+// and admitted for the request. Catalog contents describe authenticated schema;
+// they do not prove that a caller-named profile exists or is authorized.
+//
+// These declarations freeze the wire vocabulary only. Implementations enforce
+// version/profile admission, parse and AST classification, materialization,
+// catalog validation, and preparation invariants.
+type SnapshotQueryCode int32
+
+const (
+	SnapshotQueryCode_UNSPECIFIED            SnapshotQueryCode = 0
+	SnapshotQueryCode_SUCCESS                SnapshotQueryCode = 1
+	SnapshotQueryCode_UNSUPPORTED            SnapshotQueryCode = 2
+	SnapshotQueryCode_INVALID_INPUT          SnapshotQueryCode = 3
+	SnapshotQueryCode_PROFILE_UNAVAILABLE    SnapshotQueryCode = 4
+	SnapshotQueryCode_MATERIALIZATION_FAILED SnapshotQueryCode = 5
+	// Classification-only result. It is valid only after successful
+	// single-statement AST classification proves an ordinary non-snapshot
+	// statement. Parse failures, unknown statement classes, and forbidden
+	// snapshot-query shapes must use an error code instead. A response with
+	// this code acknowledges the exact version/profile and leaves every
+	// executable SQL, target, column, and read-set output empty.
+	SnapshotQueryCode_NOT_SNAPSHOT_QUERY SnapshotQueryCode = 6
+)
+
+// Enum value maps for SnapshotQueryCode.
+var (
+	SnapshotQueryCode_name = map[int32]string{
+		0: "UNSPECIFIED",
+		1: "SUCCESS",
+		2: "UNSUPPORTED",
+		3: "INVALID_INPUT",
+		4: "PROFILE_UNAVAILABLE",
+		5: "MATERIALIZATION_FAILED",
+		6: "NOT_SNAPSHOT_QUERY",
+	}
+	SnapshotQueryCode_value = map[string]int32{
+		"UNSPECIFIED":            0,
+		"SUCCESS":                1,
+		"UNSUPPORTED":            2,
+		"INVALID_INPUT":          3,
+		"PROFILE_UNAVAILABLE":    4,
+		"MATERIALIZATION_FAILED": 5,
+		"NOT_SNAPSHOT_QUERY":     6,
+	}
+)
+
+func (x SnapshotQueryCode) Enum() *SnapshotQueryCode {
+	p := new(SnapshotQueryCode)
+	*p = x
+	return p
+}
+
+func (x SnapshotQueryCode) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (SnapshotQueryCode) Descriptor() protoreflect.EnumDescriptor {
+	return file_rewriter_proto_enumTypes[7].Descriptor()
+}
+
+func (SnapshotQueryCode) Type() protoreflect.EnumType {
+	return &file_rewriter_proto_enumTypes[7]
+}
+
+func (x SnapshotQueryCode) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use SnapshotQueryCode.Descriptor instead.
+func (SnapshotQueryCode) EnumDescriptor() ([]byte, []int) {
+	return file_rewriter_proto_rawDescGZIP(), []int{7}
+}
+
 type OptimizeCode int32
 
 const (
@@ -646,11 +724,11 @@ func (x OptimizeCode) String() string {
 }
 
 func (OptimizeCode) Descriptor() protoreflect.EnumDescriptor {
-	return file_rewriter_proto_enumTypes[7].Descriptor()
+	return file_rewriter_proto_enumTypes[8].Descriptor()
 }
 
 func (OptimizeCode) Type() protoreflect.EnumType {
-	return &file_rewriter_proto_enumTypes[7]
+	return &file_rewriter_proto_enumTypes[8]
 }
 
 func (x OptimizeCode) Number() protoreflect.EnumNumber {
@@ -659,7 +737,7 @@ func (x OptimizeCode) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use OptimizeCode.Descriptor instead.
 func (OptimizeCode) EnumDescriptor() ([]byte, []int) {
-	return file_rewriter_proto_rawDescGZIP(), []int{7}
+	return file_rewriter_proto_rawDescGZIP(), []int{8}
 }
 
 type StorageIntegrityArgs_ReadMode int32
@@ -695,11 +773,11 @@ func (x StorageIntegrityArgs_ReadMode) String() string {
 }
 
 func (StorageIntegrityArgs_ReadMode) Descriptor() protoreflect.EnumDescriptor {
-	return file_rewriter_proto_enumTypes[8].Descriptor()
+	return file_rewriter_proto_enumTypes[9].Descriptor()
 }
 
 func (StorageIntegrityArgs_ReadMode) Type() protoreflect.EnumType {
-	return &file_rewriter_proto_enumTypes[8]
+	return &file_rewriter_proto_enumTypes[9]
 }
 
 func (x StorageIntegrityArgs_ReadMode) Number() protoreflect.EnumNumber {
@@ -744,11 +822,11 @@ func (x PrivilegeDelta_Action) String() string {
 }
 
 func (PrivilegeDelta_Action) Descriptor() protoreflect.EnumDescriptor {
-	return file_rewriter_proto_enumTypes[9].Descriptor()
+	return file_rewriter_proto_enumTypes[10].Descriptor()
 }
 
 func (PrivilegeDelta_Action) Type() protoreflect.EnumType {
-	return &file_rewriter_proto_enumTypes[9]
+	return &file_rewriter_proto_enumTypes[10]
 }
 
 func (x PrivilegeDelta_Action) Number() protoreflect.EnumNumber {
@@ -795,11 +873,11 @@ func (x PrivilegeDelta_Scope) String() string {
 }
 
 func (PrivilegeDelta_Scope) Descriptor() protoreflect.EnumDescriptor {
-	return file_rewriter_proto_enumTypes[10].Descriptor()
+	return file_rewriter_proto_enumTypes[11].Descriptor()
 }
 
 func (PrivilegeDelta_Scope) Type() protoreflect.EnumType {
-	return &file_rewriter_proto_enumTypes[10]
+	return &file_rewriter_proto_enumTypes[11]
 }
 
 func (x PrivilegeDelta_Scope) Number() protoreflect.EnumNumber {
@@ -2538,6 +2616,575 @@ func (x *PrivilegeDelta) GetGrantOption() bool {
 	return false
 }
 
+// One authenticated column in SnapshotQueryCatalogTable.columns. Entries are
+// ordered exactly as the table schema, not in an INSERT target-list order.
+type SnapshotQueryColumn struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Type          string                 `protobuf:"bytes,2,opt,name=type,proto3" json:"type,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SnapshotQueryColumn) Reset() {
+	*x = SnapshotQueryColumn{}
+	mi := &file_rewriter_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SnapshotQueryColumn) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SnapshotQueryColumn) ProtoMessage() {}
+
+func (x *SnapshotQueryColumn) ProtoReflect() protoreflect.Message {
+	mi := &file_rewriter_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SnapshotQueryColumn.ProtoReflect.Descriptor instead.
+func (*SnapshotQueryColumn) Descriptor() ([]byte, []int) {
+	return file_rewriter_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *SnapshotQueryColumn) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *SnapshotQueryColumn) GetType() string {
+	if x != nil {
+		return x.Type
+	}
+	return ""
+}
+
+// Authenticated schema metadata supplied by the caller for a table visible to
+// analysis. The catalog cannot be used to invent or activate a query profile.
+type SnapshotQueryCatalogTable struct {
+	state      protoimpl.MessageState `protogen:"open.v1"`
+	Database   string                 `protobuf:"bytes,1,opt,name=database,proto3" json:"database,omitempty"`
+	Table      string                 `protobuf:"bytes,2,opt,name=table,proto3" json:"table,omitempty"`
+	TableId    string                 `protobuf:"bytes,3,opt,name=table_id,json=tableId,proto3" json:"table_id,omitempty"`
+	SchemaHash string                 `protobuf:"bytes,4,opt,name=schema_hash,json=schemaHash,proto3" json:"schema_hash,omitempty"`
+	// Authenticated target-schema order.
+	Columns       []*SnapshotQueryColumn `protobuf:"bytes,5,rep,name=columns,proto3" json:"columns,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SnapshotQueryCatalogTable) Reset() {
+	*x = SnapshotQueryCatalogTable{}
+	mi := &file_rewriter_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SnapshotQueryCatalogTable) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SnapshotQueryCatalogTable) ProtoMessage() {}
+
+func (x *SnapshotQueryCatalogTable) ProtoReflect() protoreflect.Message {
+	mi := &file_rewriter_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SnapshotQueryCatalogTable.ProtoReflect.Descriptor instead.
+func (*SnapshotQueryCatalogTable) Descriptor() ([]byte, []int) {
+	return file_rewriter_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *SnapshotQueryCatalogTable) GetDatabase() string {
+	if x != nil {
+		return x.Database
+	}
+	return ""
+}
+
+func (x *SnapshotQueryCatalogTable) GetTable() string {
+	if x != nil {
+		return x.Table
+	}
+	return ""
+}
+
+func (x *SnapshotQueryCatalogTable) GetTableId() string {
+	if x != nil {
+		return x.TableId
+	}
+	return ""
+}
+
+func (x *SnapshotQueryCatalogTable) GetSchemaHash() string {
+	if x != nil {
+		return x.SchemaHash
+	}
+	return ""
+}
+
+func (x *SnapshotQueryCatalogTable) GetColumns() []*SnapshotQueryColumn {
+	if x != nil {
+		return x.Columns
+	}
+	return nil
+}
+
+// Analyze one statement under the versioned snapshot-query profile.
+type AnalyzeSnapshotQueryRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Must be exactly 1. The response acknowledges the accepted version.
+	ContractVersion uint32 `protobuf:"varint,1,opt,name=contract_version,json=contractVersion,proto3" json:"contract_version,omitempty"`
+	// Identifies an installed and caller-admitted profile; the catalog does
+	// not establish support for an arbitrary identifier.
+	QueryProfileId  string                       `protobuf:"bytes,2,opt,name=query_profile_id,json=queryProfileId,proto3" json:"query_profile_id,omitempty"`
+	Sql             string                       `protobuf:"bytes,3,opt,name=sql,proto3" json:"sql,omitempty"`
+	LogicalDatabase string                       `protobuf:"bytes,4,opt,name=logical_database,json=logicalDatabase,proto3" json:"logical_database,omitempty"`
+	Catalog         []*SnapshotQueryCatalogTable `protobuf:"bytes,5,rep,name=catalog,proto3" json:"catalog,omitempty"`
+	// False requires inputs to be absent and a snapshot query to contain no
+	// residual volatility. True requests complete deterministic replacement;
+	// missing pools or incomplete replacement fail materialization.
+	Materialize   bool                   `protobuf:"varint,6,opt,name=materialize,proto3" json:"materialize,omitempty"`
+	Inputs        *MaterializationInputs `protobuf:"bytes,7,opt,name=inputs,proto3" json:"inputs,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AnalyzeSnapshotQueryRequest) Reset() {
+	*x = AnalyzeSnapshotQueryRequest{}
+	mi := &file_rewriter_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AnalyzeSnapshotQueryRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AnalyzeSnapshotQueryRequest) ProtoMessage() {}
+
+func (x *AnalyzeSnapshotQueryRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_rewriter_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AnalyzeSnapshotQueryRequest.ProtoReflect.Descriptor instead.
+func (*AnalyzeSnapshotQueryRequest) Descriptor() ([]byte, []int) {
+	return file_rewriter_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *AnalyzeSnapshotQueryRequest) GetContractVersion() uint32 {
+	if x != nil {
+		return x.ContractVersion
+	}
+	return 0
+}
+
+func (x *AnalyzeSnapshotQueryRequest) GetQueryProfileId() string {
+	if x != nil {
+		return x.QueryProfileId
+	}
+	return ""
+}
+
+func (x *AnalyzeSnapshotQueryRequest) GetSql() string {
+	if x != nil {
+		return x.Sql
+	}
+	return ""
+}
+
+func (x *AnalyzeSnapshotQueryRequest) GetLogicalDatabase() string {
+	if x != nil {
+		return x.LogicalDatabase
+	}
+	return ""
+}
+
+func (x *AnalyzeSnapshotQueryRequest) GetCatalog() []*SnapshotQueryCatalogTable {
+	if x != nil {
+		return x.Catalog
+	}
+	return nil
+}
+
+func (x *AnalyzeSnapshotQueryRequest) GetMaterialize() bool {
+	if x != nil {
+		return x.Materialize
+	}
+	return false
+}
+
+func (x *AnalyzeSnapshotQueryRequest) GetInputs() *MaterializationInputs {
+	if x != nil {
+		return x.Inputs
+	}
+	return nil
+}
+
+type AnalyzeSnapshotQueryResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Echoed as 1, with the exact query_profile_id, only after version/profile
+	// admission. See SnapshotQueryCode for NOT_SNAPSHOT_QUERY constraints.
+	ContractVersion uint32            `protobuf:"varint,1,opt,name=contract_version,json=contractVersion,proto3" json:"contract_version,omitempty"`
+	QueryProfileId  string            `protobuf:"bytes,2,opt,name=query_profile_id,json=queryProfileId,proto3" json:"query_profile_id,omitempty"`
+	Code            SnapshotQueryCode `protobuf:"varint,3,opt,name=code,proto3,enum=rewriter.SnapshotQueryCode" json:"code,omitempty"`
+	Message         string            `protobuf:"bytes,4,opt,name=message,proto3" json:"message,omitempty"`
+	// Executable only on SUCCESS. Empty on every error and on
+	// NOT_SNAPSHOT_QUERY.
+	SqlAfterMaterialization string `protobuf:"bytes,5,opt,name=sql_after_materialization,json=sqlAfterMaterialization,proto3" json:"sql_after_materialization,omitempty"`
+	// Populated only on SUCCESS.
+	TargetTableId string `protobuf:"bytes,6,opt,name=target_table_id,json=targetTableId,proto3" json:"target_table_id,omitempty"`
+	// INSERT positional target-list order, which can differ from authenticated
+	// target-schema order.
+	TargetColumns []string `protobuf:"bytes,7,rep,name=target_columns,json=targetColumns,proto3" json:"target_columns,omitempty"`
+	// Sorted unique table-ID order.
+	ReadTableIds  []string `protobuf:"bytes,8,rep,name=read_table_ids,json=readTableIds,proto3" json:"read_table_ids,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AnalyzeSnapshotQueryResponse) Reset() {
+	*x = AnalyzeSnapshotQueryResponse{}
+	mi := &file_rewriter_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AnalyzeSnapshotQueryResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AnalyzeSnapshotQueryResponse) ProtoMessage() {}
+
+func (x *AnalyzeSnapshotQueryResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_rewriter_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AnalyzeSnapshotQueryResponse.ProtoReflect.Descriptor instead.
+func (*AnalyzeSnapshotQueryResponse) Descriptor() ([]byte, []int) {
+	return file_rewriter_proto_rawDescGZIP(), []int{21}
+}
+
+func (x *AnalyzeSnapshotQueryResponse) GetContractVersion() uint32 {
+	if x != nil {
+		return x.ContractVersion
+	}
+	return 0
+}
+
+func (x *AnalyzeSnapshotQueryResponse) GetQueryProfileId() string {
+	if x != nil {
+		return x.QueryProfileId
+	}
+	return ""
+}
+
+func (x *AnalyzeSnapshotQueryResponse) GetCode() SnapshotQueryCode {
+	if x != nil {
+		return x.Code
+	}
+	return SnapshotQueryCode_UNSPECIFIED
+}
+
+func (x *AnalyzeSnapshotQueryResponse) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+func (x *AnalyzeSnapshotQueryResponse) GetSqlAfterMaterialization() string {
+	if x != nil {
+		return x.SqlAfterMaterialization
+	}
+	return ""
+}
+
+func (x *AnalyzeSnapshotQueryResponse) GetTargetTableId() string {
+	if x != nil {
+		return x.TargetTableId
+	}
+	return ""
+}
+
+func (x *AnalyzeSnapshotQueryResponse) GetTargetColumns() []string {
+	if x != nil {
+		return x.TargetColumns
+	}
+	return nil
+}
+
+func (x *AnalyzeSnapshotQueryResponse) GetReadTableIds() []string {
+	if x != nil {
+		return x.ReadTableIds
+	}
+	return nil
+}
+
+// Exact scratch location for one analyzed read table.
+type SnapshotScratchBinding struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	TableId         string                 `protobuf:"bytes,1,opt,name=table_id,json=tableId,proto3" json:"table_id,omitempty"`
+	ScratchDatabase string                 `protobuf:"bytes,2,opt,name=scratch_database,json=scratchDatabase,proto3" json:"scratch_database,omitempty"`
+	ScratchTable    string                 `protobuf:"bytes,3,opt,name=scratch_table,json=scratchTable,proto3" json:"scratch_table,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *SnapshotScratchBinding) Reset() {
+	*x = SnapshotScratchBinding{}
+	mi := &file_rewriter_proto_msgTypes[22]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SnapshotScratchBinding) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SnapshotScratchBinding) ProtoMessage() {}
+
+func (x *SnapshotScratchBinding) ProtoReflect() protoreflect.Message {
+	mi := &file_rewriter_proto_msgTypes[22]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SnapshotScratchBinding.ProtoReflect.Descriptor instead.
+func (*SnapshotScratchBinding) Descriptor() ([]byte, []int) {
+	return file_rewriter_proto_rawDescGZIP(), []int{22}
+}
+
+func (x *SnapshotScratchBinding) GetTableId() string {
+	if x != nil {
+		return x.TableId
+	}
+	return ""
+}
+
+func (x *SnapshotScratchBinding) GetScratchDatabase() string {
+	if x != nil {
+		return x.ScratchDatabase
+	}
+	return ""
+}
+
+func (x *SnapshotScratchBinding) GetScratchTable() string {
+	if x != nil {
+		return x.ScratchTable
+	}
+	return ""
+}
+
+// Prepare an analyzed snapshot query to read from caller-created scratch
+// tables. Implementations revalidate analysis with materialize=false and
+// require bindings in sorted unique table-ID order with an exact one-to-one
+// match to the analyzed read set. Preparation never accepts
+// NOT_SNAPSHOT_QUERY. These runtime admission rules are not enforced by the
+// protobuf declaration itself.
+type PrepareSnapshotQueryRequest struct {
+	state         protoimpl.MessageState       `protogen:"open.v1"`
+	Analysis      *AnalyzeSnapshotQueryRequest `protobuf:"bytes,1,opt,name=analysis,proto3" json:"analysis,omitempty"`
+	Bindings      []*SnapshotScratchBinding    `protobuf:"bytes,2,rep,name=bindings,proto3" json:"bindings,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PrepareSnapshotQueryRequest) Reset() {
+	*x = PrepareSnapshotQueryRequest{}
+	mi := &file_rewriter_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PrepareSnapshotQueryRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PrepareSnapshotQueryRequest) ProtoMessage() {}
+
+func (x *PrepareSnapshotQueryRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_rewriter_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PrepareSnapshotQueryRequest.ProtoReflect.Descriptor instead.
+func (*PrepareSnapshotQueryRequest) Descriptor() ([]byte, []int) {
+	return file_rewriter_proto_rawDescGZIP(), []int{23}
+}
+
+func (x *PrepareSnapshotQueryRequest) GetAnalysis() *AnalyzeSnapshotQueryRequest {
+	if x != nil {
+		return x.Analysis
+	}
+	return nil
+}
+
+func (x *PrepareSnapshotQueryRequest) GetBindings() []*SnapshotScratchBinding {
+	if x != nil {
+		return x.Bindings
+	}
+	return nil
+}
+
+type PrepareSnapshotQueryResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Echoed as 1, with the exact query_profile_id, only after version/profile
+	// admission.
+	ContractVersion uint32            `protobuf:"varint,1,opt,name=contract_version,json=contractVersion,proto3" json:"contract_version,omitempty"`
+	QueryProfileId  string            `protobuf:"bytes,2,opt,name=query_profile_id,json=queryProfileId,proto3" json:"query_profile_id,omitempty"`
+	Code            SnapshotQueryCode `protobuf:"varint,3,opt,name=code,proto3,enum=rewriter.SnapshotQueryCode" json:"code,omitempty"`
+	Message         string            `protobuf:"bytes,4,opt,name=message,proto3" json:"message,omitempty"`
+	// Executable only on SUCCESS; empty for every error. Its outer projection
+	// is reordered to authenticated target-schema order and applies only
+	// profile-admitted coercions to those exact target types.
+	SelectSql string `protobuf:"bytes,5,opt,name=select_sql,json=selectSql,proto3" json:"select_sql,omitempty"`
+	// Populated only on SUCCESS.
+	TargetTableId string `protobuf:"bytes,6,opt,name=target_table_id,json=targetTableId,proto3" json:"target_table_id,omitempty"`
+	// Authenticated target-schema order, deliberately different from the
+	// analysis response's INSERT target-list order when the INSERT permutes
+	// columns.
+	TargetColumns []string `protobuf:"bytes,7,rep,name=target_columns,json=targetColumns,proto3" json:"target_columns,omitempty"`
+	// Sorted unique table-ID order, matching the required bindings exactly.
+	ReadTableIds  []string `protobuf:"bytes,8,rep,name=read_table_ids,json=readTableIds,proto3" json:"read_table_ids,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PrepareSnapshotQueryResponse) Reset() {
+	*x = PrepareSnapshotQueryResponse{}
+	mi := &file_rewriter_proto_msgTypes[24]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PrepareSnapshotQueryResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PrepareSnapshotQueryResponse) ProtoMessage() {}
+
+func (x *PrepareSnapshotQueryResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_rewriter_proto_msgTypes[24]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PrepareSnapshotQueryResponse.ProtoReflect.Descriptor instead.
+func (*PrepareSnapshotQueryResponse) Descriptor() ([]byte, []int) {
+	return file_rewriter_proto_rawDescGZIP(), []int{24}
+}
+
+func (x *PrepareSnapshotQueryResponse) GetContractVersion() uint32 {
+	if x != nil {
+		return x.ContractVersion
+	}
+	return 0
+}
+
+func (x *PrepareSnapshotQueryResponse) GetQueryProfileId() string {
+	if x != nil {
+		return x.QueryProfileId
+	}
+	return ""
+}
+
+func (x *PrepareSnapshotQueryResponse) GetCode() SnapshotQueryCode {
+	if x != nil {
+		return x.Code
+	}
+	return SnapshotQueryCode_UNSPECIFIED
+}
+
+func (x *PrepareSnapshotQueryResponse) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+func (x *PrepareSnapshotQueryResponse) GetSelectSql() string {
+	if x != nil {
+		return x.SelectSql
+	}
+	return ""
+}
+
+func (x *PrepareSnapshotQueryResponse) GetTargetTableId() string {
+	if x != nil {
+		return x.TargetTableId
+	}
+	return ""
+}
+
+func (x *PrepareSnapshotQueryResponse) GetTargetColumns() []string {
+	if x != nil {
+		return x.TargetColumns
+	}
+	return nil
+}
+
+func (x *PrepareSnapshotQueryResponse) GetReadTableIds() []string {
+	if x != nil {
+		return x.ReadTableIds
+	}
+	return nil
+}
+
 // Apply optimizations to a SQL string that has already been through Rewrite.
 // Kept separate from Rewrite so callers (1) can collect physical-table size
 // metadata between the two calls — Rewrite's response tells them which
@@ -2568,7 +3215,7 @@ type OptimizeRequest struct {
 
 func (x *OptimizeRequest) Reset() {
 	*x = OptimizeRequest{}
-	mi := &file_rewriter_proto_msgTypes[18]
+	mi := &file_rewriter_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2580,7 +3227,7 @@ func (x *OptimizeRequest) String() string {
 func (*OptimizeRequest) ProtoMessage() {}
 
 func (x *OptimizeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_rewriter_proto_msgTypes[18]
+	mi := &file_rewriter_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2593,7 +3240,7 @@ func (x *OptimizeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OptimizeRequest.ProtoReflect.Descriptor instead.
 func (*OptimizeRequest) Descriptor() ([]byte, []int) {
-	return file_rewriter_proto_rawDescGZIP(), []int{18}
+	return file_rewriter_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *OptimizeRequest) GetSql() string {
@@ -2642,7 +3289,7 @@ type OptimizeResponse struct {
 
 func (x *OptimizeResponse) Reset() {
 	*x = OptimizeResponse{}
-	mi := &file_rewriter_proto_msgTypes[19]
+	mi := &file_rewriter_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2654,7 +3301,7 @@ func (x *OptimizeResponse) String() string {
 func (*OptimizeResponse) ProtoMessage() {}
 
 func (x *OptimizeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_rewriter_proto_msgTypes[19]
+	mi := &file_rewriter_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2667,7 +3314,7 @@ func (x *OptimizeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OptimizeResponse.ProtoReflect.Descriptor instead.
 func (*OptimizeResponse) Descriptor() ([]byte, []int) {
-	return file_rewriter_proto_rawDescGZIP(), []int{19}
+	return file_rewriter_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *OptimizeResponse) GetCode() OptimizeCode {
@@ -2709,7 +3356,7 @@ type RewriteErrorMessageRequest struct {
 
 func (x *RewriteErrorMessageRequest) Reset() {
 	*x = RewriteErrorMessageRequest{}
-	mi := &file_rewriter_proto_msgTypes[20]
+	mi := &file_rewriter_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2721,7 +3368,7 @@ func (x *RewriteErrorMessageRequest) String() string {
 func (*RewriteErrorMessageRequest) ProtoMessage() {}
 
 func (x *RewriteErrorMessageRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_rewriter_proto_msgTypes[20]
+	mi := &file_rewriter_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2734,7 +3381,7 @@ func (x *RewriteErrorMessageRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RewriteErrorMessageRequest.ProtoReflect.Descriptor instead.
 func (*RewriteErrorMessageRequest) Descriptor() ([]byte, []int) {
-	return file_rewriter_proto_rawDescGZIP(), []int{20}
+	return file_rewriter_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *RewriteErrorMessageRequest) GetSql() string {
@@ -2769,7 +3416,7 @@ type RewriteErrorMessageResponse struct {
 
 func (x *RewriteErrorMessageResponse) Reset() {
 	*x = RewriteErrorMessageResponse{}
-	mi := &file_rewriter_proto_msgTypes[21]
+	mi := &file_rewriter_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2781,7 +3428,7 @@ func (x *RewriteErrorMessageResponse) String() string {
 func (*RewriteErrorMessageResponse) ProtoMessage() {}
 
 func (x *RewriteErrorMessageResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_rewriter_proto_msgTypes[21]
+	mi := &file_rewriter_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2794,7 +3441,7 @@ func (x *RewriteErrorMessageResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RewriteErrorMessageResponse.ProtoReflect.Descriptor instead.
 func (*RewriteErrorMessageResponse) Descriptor() ([]byte, []int) {
-	return file_rewriter_proto_rawDescGZIP(), []int{21}
+	return file_rewriter_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *RewriteErrorMessageResponse) GetCode() RewriteCode {
@@ -2828,7 +3475,7 @@ type RewriteLimitArgs_ReplaceLimit struct {
 
 func (x *RewriteLimitArgs_ReplaceLimit) Reset() {
 	*x = RewriteLimitArgs_ReplaceLimit{}
-	mi := &file_rewriter_proto_msgTypes[22]
+	mi := &file_rewriter_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2840,7 +3487,7 @@ func (x *RewriteLimitArgs_ReplaceLimit) String() string {
 func (*RewriteLimitArgs_ReplaceLimit) ProtoMessage() {}
 
 func (x *RewriteLimitArgs_ReplaceLimit) ProtoReflect() protoreflect.Message {
-	mi := &file_rewriter_proto_msgTypes[22]
+	mi := &file_rewriter_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2880,7 +3527,7 @@ type RewriteCommonTableExprArgs_CommonTableExpr struct {
 
 func (x *RewriteCommonTableExprArgs_CommonTableExpr) Reset() {
 	*x = RewriteCommonTableExprArgs_CommonTableExpr{}
-	mi := &file_rewriter_proto_msgTypes[23]
+	mi := &file_rewriter_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2892,7 +3539,7 @@ func (x *RewriteCommonTableExprArgs_CommonTableExpr) String() string {
 func (*RewriteCommonTableExprArgs_CommonTableExpr) ProtoMessage() {}
 
 func (x *RewriteCommonTableExprArgs_CommonTableExpr) ProtoReflect() protoreflect.Message {
-	mi := &file_rewriter_proto_msgTypes[23]
+	mi := &file_rewriter_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2937,7 +3584,7 @@ type RewriteTableStaticArgs_RemoteTable struct {
 
 func (x *RewriteTableStaticArgs_RemoteTable) Reset() {
 	*x = RewriteTableStaticArgs_RemoteTable{}
-	mi := &file_rewriter_proto_msgTypes[25]
+	mi := &file_rewriter_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2949,7 +3596,7 @@ func (x *RewriteTableStaticArgs_RemoteTable) String() string {
 func (*RewriteTableStaticArgs_RemoteTable) ProtoMessage() {}
 
 func (x *RewriteTableStaticArgs_RemoteTable) ProtoReflect() protoreflect.Message {
-	mi := &file_rewriter_proto_msgTypes[25]
+	mi := &file_rewriter_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3011,7 +3658,7 @@ type RewriteTableStaticArgs_TableWithDatabase struct {
 
 func (x *RewriteTableStaticArgs_TableWithDatabase) Reset() {
 	*x = RewriteTableStaticArgs_TableWithDatabase{}
-	mi := &file_rewriter_proto_msgTypes[26]
+	mi := &file_rewriter_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3023,7 +3670,7 @@ func (x *RewriteTableStaticArgs_TableWithDatabase) String() string {
 func (*RewriteTableStaticArgs_TableWithDatabase) ProtoMessage() {}
 
 func (x *RewriteTableStaticArgs_TableWithDatabase) ProtoReflect() protoreflect.Message {
-	mi := &file_rewriter_proto_msgTypes[26]
+	mi := &file_rewriter_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3068,7 +3715,7 @@ type RewriteTableDynamicArgs_RemoteUpstream struct {
 
 func (x *RewriteTableDynamicArgs_RemoteUpstream) Reset() {
 	*x = RewriteTableDynamicArgs_RemoteUpstream{}
-	mi := &file_rewriter_proto_msgTypes[31]
+	mi := &file_rewriter_proto_msgTypes[38]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3080,7 +3727,7 @@ func (x *RewriteTableDynamicArgs_RemoteUpstream) String() string {
 func (*RewriteTableDynamicArgs_RemoteUpstream) ProtoMessage() {}
 
 func (x *RewriteTableDynamicArgs_RemoteUpstream) ProtoReflect() protoreflect.Message {
-	mi := &file_rewriter_proto_msgTypes[31]
+	mi := &file_rewriter_proto_msgTypes[38]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3128,7 +3775,7 @@ type StorageIntegrityArgs_Table struct {
 
 func (x *StorageIntegrityArgs_Table) Reset() {
 	*x = StorageIntegrityArgs_Table{}
-	mi := &file_rewriter_proto_msgTypes[34]
+	mi := &file_rewriter_proto_msgTypes[41]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3140,7 +3787,7 @@ func (x *StorageIntegrityArgs_Table) String() string {
 func (*StorageIntegrityArgs_Table) ProtoMessage() {}
 
 func (x *StorageIntegrityArgs_Table) ProtoReflect() protoreflect.Message {
-	mi := &file_rewriter_proto_msgTypes[34]
+	mi := &file_rewriter_proto_msgTypes[41]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3194,7 +3841,7 @@ type RewriteSettingsArgs_Setting struct {
 
 func (x *RewriteSettingsArgs_Setting) Reset() {
 	*x = RewriteSettingsArgs_Setting{}
-	mi := &file_rewriter_proto_msgTypes[36]
+	mi := &file_rewriter_proto_msgTypes[43]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3206,7 +3853,7 @@ func (x *RewriteSettingsArgs_Setting) String() string {
 func (*RewriteSettingsArgs_Setting) ProtoMessage() {}
 
 func (x *RewriteSettingsArgs_Setting) ProtoReflect() protoreflect.Message {
-	mi := &file_rewriter_proto_msgTypes[36]
+	mi := &file_rewriter_proto_msgTypes[43]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3335,7 +3982,7 @@ type PrivilegeDelta_Grantee struct {
 
 func (x *PrivilegeDelta_Grantee) Reset() {
 	*x = PrivilegeDelta_Grantee{}
-	mi := &file_rewriter_proto_msgTypes[39]
+	mi := &file_rewriter_proto_msgTypes[46]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3347,7 +3994,7 @@ func (x *PrivilegeDelta_Grantee) String() string {
 func (*PrivilegeDelta_Grantee) ProtoMessage() {}
 
 func (x *PrivilegeDelta_Grantee) ProtoReflect() protoreflect.Message {
-	mi := &file_rewriter_proto_msgTypes[39]
+	mi := &file_rewriter_proto_msgTypes[46]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3572,7 +4219,51 @@ const file_rewriter_proto_rawDesc = "" +
 	"\x05Scope\x12\x15\n" +
 	"\x11SCOPE_UNSPECIFIED\x10\x00\x12\x0f\n" +
 	"\vSCOPE_TABLE\x10\x01\x12\x12\n" +
-	"\x0eSCOPE_DATABASE\x10\x02\"\xa6\x02\n" +
+	"\x0eSCOPE_DATABASE\x10\x02\"=\n" +
+	"\x13SnapshotQueryColumn\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12\x12\n" +
+	"\x04type\x18\x02 \x01(\tR\x04type\"\xc2\x01\n" +
+	"\x19SnapshotQueryCatalogTable\x12\x1a\n" +
+	"\bdatabase\x18\x01 \x01(\tR\bdatabase\x12\x14\n" +
+	"\x05table\x18\x02 \x01(\tR\x05table\x12\x19\n" +
+	"\btable_id\x18\x03 \x01(\tR\atableId\x12\x1f\n" +
+	"\vschema_hash\x18\x04 \x01(\tR\n" +
+	"schemaHash\x127\n" +
+	"\acolumns\x18\x05 \x03(\v2\x1d.rewriter.SnapshotQueryColumnR\acolumns\"\xc9\x02\n" +
+	"\x1bAnalyzeSnapshotQueryRequest\x12)\n" +
+	"\x10contract_version\x18\x01 \x01(\rR\x0fcontractVersion\x12(\n" +
+	"\x10query_profile_id\x18\x02 \x01(\tR\x0equeryProfileId\x12\x10\n" +
+	"\x03sql\x18\x03 \x01(\tR\x03sql\x12)\n" +
+	"\x10logical_database\x18\x04 \x01(\tR\x0flogicalDatabase\x12=\n" +
+	"\acatalog\x18\x05 \x03(\v2#.rewriter.SnapshotQueryCatalogTableR\acatalog\x12 \n" +
+	"\vmaterialize\x18\x06 \x01(\bR\vmaterialize\x127\n" +
+	"\x06inputs\x18\a \x01(\v2\x1f.rewriter.MaterializationInputsR\x06inputs\"\xef\x02\n" +
+	"\x1cAnalyzeSnapshotQueryResponse\x12)\n" +
+	"\x10contract_version\x18\x01 \x01(\rR\x0fcontractVersion\x12(\n" +
+	"\x10query_profile_id\x18\x02 \x01(\tR\x0equeryProfileId\x12/\n" +
+	"\x04code\x18\x03 \x01(\x0e2\x1b.rewriter.SnapshotQueryCodeR\x04code\x12\x18\n" +
+	"\amessage\x18\x04 \x01(\tR\amessage\x12:\n" +
+	"\x19sql_after_materialization\x18\x05 \x01(\tR\x17sqlAfterMaterialization\x12&\n" +
+	"\x0ftarget_table_id\x18\x06 \x01(\tR\rtargetTableId\x12%\n" +
+	"\x0etarget_columns\x18\a \x03(\tR\rtargetColumns\x12$\n" +
+	"\x0eread_table_ids\x18\b \x03(\tR\freadTableIds\"\x83\x01\n" +
+	"\x16SnapshotScratchBinding\x12\x19\n" +
+	"\btable_id\x18\x01 \x01(\tR\atableId\x12)\n" +
+	"\x10scratch_database\x18\x02 \x01(\tR\x0fscratchDatabase\x12#\n" +
+	"\rscratch_table\x18\x03 \x01(\tR\fscratchTable\"\x9e\x01\n" +
+	"\x1bPrepareSnapshotQueryRequest\x12A\n" +
+	"\banalysis\x18\x01 \x01(\v2%.rewriter.AnalyzeSnapshotQueryRequestR\banalysis\x12<\n" +
+	"\bbindings\x18\x02 \x03(\v2 .rewriter.SnapshotScratchBindingR\bbindings\"\xd2\x02\n" +
+	"\x1cPrepareSnapshotQueryResponse\x12)\n" +
+	"\x10contract_version\x18\x01 \x01(\rR\x0fcontractVersion\x12(\n" +
+	"\x10query_profile_id\x18\x02 \x01(\tR\x0equeryProfileId\x12/\n" +
+	"\x04code\x18\x03 \x01(\x0e2\x1b.rewriter.SnapshotQueryCodeR\x04code\x12\x18\n" +
+	"\amessage\x18\x04 \x01(\tR\amessage\x12\x1d\n" +
+	"\n" +
+	"select_sql\x18\x05 \x01(\tR\tselectSql\x12&\n" +
+	"\x0ftarget_table_id\x18\x06 \x01(\tR\rtargetTableId\x12%\n" +
+	"\x0etarget_columns\x18\a \x03(\tR\rtargetColumns\x12$\n" +
+	"\x0eread_table_ids\x18\b \x03(\tR\freadTableIds\"\xa6\x02\n" +
 	"\x0fOptimizeRequest\x12\x10\n" +
 	"\x03sql\x18\x01 \x01(\tR\x03sql\x12J\n" +
 	"\vtable_sizes\x18\x02 \x03(\v2).rewriter.OptimizeRequest.TableSizesEntryR\n" +
@@ -3653,17 +4344,27 @@ const file_rewriter_proto_rawDesc = "" +
 	"\x0fExistenceClause\x12 \n" +
 	"\x1cEXISTENCE_CLAUSE_UNSPECIFIED\x10\x00\x12\"\n" +
 	"\x1eEXISTENCE_CLAUSE_IF_NOT_EXISTS\x10\x01\x12\x1e\n" +
-	"\x1aEXISTENCE_CLAUSE_IF_EXISTS\x10\x02*R\n" +
+	"\x1aEXISTENCE_CLAUSE_IF_EXISTS\x10\x02*\xa2\x01\n" +
+	"\x11SnapshotQueryCode\x12\x0f\n" +
+	"\vUNSPECIFIED\x10\x00\x12\v\n" +
+	"\aSUCCESS\x10\x01\x12\x0f\n" +
+	"\vUNSUPPORTED\x10\x02\x12\x11\n" +
+	"\rINVALID_INPUT\x10\x03\x12\x17\n" +
+	"\x13PROFILE_UNAVAILABLE\x10\x04\x12\x1a\n" +
+	"\x16MATERIALIZATION_FAILED\x10\x05\x12\x16\n" +
+	"\x12NOT_SNAPSHOT_QUERY\x10\x06*R\n" +
 	"\fOptimizeCode\x12\x0e\n" +
 	"\n" +
 	"OptimizeOK\x10\x00\x12\x17\n" +
 	"\x13OptimizeSyntaxError\x10\x01\x12\x19\n" +
-	"\x15OptimizeUnoptimizable\x10\x022\xdb\x02\n" +
+	"\x15OptimizeUnoptimizable\x10\x022\xad\x04\n" +
 	"\x0fRewriterService\x12U\n" +
 	"\x0eMaterializeSQL\x12\x1f.rewriter.MaterializeSQLRequest\x1a .rewriter.MaterializeSQLResponse\"\x00\x12F\n" +
 	"\aRewrite\x12\x1b.rewriter.RewriteSQLRequest\x1a\x1c.rewriter.RewriteSQLResponse\"\x00\x12d\n" +
 	"\x13RewriteErrorMessage\x12$.rewriter.RewriteErrorMessageRequest\x1a%.rewriter.RewriteErrorMessageResponse\"\x00\x12C\n" +
-	"\bOptimize\x12\x19.rewriter.OptimizeRequest\x1a\x1a.rewriter.OptimizeResponse\"\x00B/Z-github.com/housegate/rewriter-proto/gen/pb;pbb\x06proto3"
+	"\bOptimize\x12\x19.rewriter.OptimizeRequest\x1a\x1a.rewriter.OptimizeResponse\"\x00\x12g\n" +
+	"\x14AnalyzeSnapshotQuery\x12%.rewriter.AnalyzeSnapshotQueryRequest\x1a&.rewriter.AnalyzeSnapshotQueryResponse\"\x00\x12g\n" +
+	"\x14PrepareSnapshotQuery\x12%.rewriter.PrepareSnapshotQueryRequest\x1a&.rewriter.PrepareSnapshotQueryResponse\"\x00B/Z-github.com/housegate/rewriter-proto/gen/pb;pbb\x06proto3"
 
 var (
 	file_rewriter_proto_rawDescOnce sync.Once
@@ -3677,8 +4378,8 @@ func file_rewriter_proto_rawDescGZIP() []byte {
 	return file_rewriter_proto_rawDescData
 }
 
-var file_rewriter_proto_enumTypes = make([]protoimpl.EnumInfo, 11)
-var file_rewriter_proto_msgTypes = make([]protoimpl.MessageInfo, 41)
+var file_rewriter_proto_enumTypes = make([]protoimpl.EnumInfo, 12)
+var file_rewriter_proto_msgTypes = make([]protoimpl.MessageInfo, 48)
 var file_rewriter_proto_goTypes = []any{
 	(RewriteOp)(0),                                     // 0: rewriter.RewriteOp
 	(StorageIntegrityContractVersion)(0),               // 1: rewriter.StorageIntegrityContractVersion
@@ -3687,113 +4388,132 @@ var file_rewriter_proto_goTypes = []any{
 	(RewriteCode)(0),                                   // 4: rewriter.RewriteCode
 	(StatementType)(0),                                 // 5: rewriter.StatementType
 	(ExistenceClause)(0),                               // 6: rewriter.ExistenceClause
-	(OptimizeCode)(0),                                  // 7: rewriter.OptimizeCode
-	(StorageIntegrityArgs_ReadMode)(0),                 // 8: rewriter.StorageIntegrityArgs.ReadMode
-	(PrivilegeDelta_Action)(0),                         // 9: rewriter.PrivilegeDelta.Action
-	(PrivilegeDelta_Scope)(0),                          // 10: rewriter.PrivilegeDelta.Scope
-	(*RewriteLimitArgs)(nil),                           // 11: rewriter.RewriteLimitArgs
-	(*RewriteOffsetArgs)(nil),                          // 12: rewriter.RewriteOffsetArgs
-	(*RewriteCommonTableExprArgs)(nil),                 // 13: rewriter.RewriteCommonTableExprArgs
-	(*RewriteTableStaticArgs)(nil),                     // 14: rewriter.RewriteTableStaticArgs
-	(*RewriteTableDynamicArgs)(nil),                    // 15: rewriter.RewriteTableDynamicArgs
-	(*StorageIntegrityArgs)(nil),                       // 16: rewriter.StorageIntegrityArgs
-	(*RewriteTableNameArgs)(nil),                       // 17: rewriter.RewriteTableNameArgs
-	(*RewriteSettingsArgs)(nil),                        // 18: rewriter.RewriteSettingsArgs
-	(*RewriteOption)(nil),                              // 19: rewriter.RewriteOption
-	(*RewriteSQLRequest)(nil),                          // 20: rewriter.RewriteSQLRequest
-	(*MaterializeSQLRequest)(nil),                      // 21: rewriter.MaterializeSQLRequest
-	(*MaterializationPolicy)(nil),                      // 22: rewriter.MaterializationPolicy
-	(*MaterializationInputs)(nil),                      // 23: rewriter.MaterializationInputs
-	(*MaterializedReplacement)(nil),                    // 24: rewriter.MaterializedReplacement
-	(*MaterializeSQLResponse)(nil),                     // 25: rewriter.MaterializeSQLResponse
-	(*RewriteSQLResponse)(nil),                         // 26: rewriter.RewriteSQLResponse
-	(*AccessedTable)(nil),                              // 27: rewriter.AccessedTable
-	(*PrivilegeDelta)(nil),                             // 28: rewriter.PrivilegeDelta
-	(*OptimizeRequest)(nil),                            // 29: rewriter.OptimizeRequest
-	(*OptimizeResponse)(nil),                           // 30: rewriter.OptimizeResponse
-	(*RewriteErrorMessageRequest)(nil),                 // 31: rewriter.RewriteErrorMessageRequest
-	(*RewriteErrorMessageResponse)(nil),                // 32: rewriter.RewriteErrorMessageResponse
-	(*RewriteLimitArgs_ReplaceLimit)(nil),              // 33: rewriter.RewriteLimitArgs.ReplaceLimit
-	(*RewriteCommonTableExprArgs_CommonTableExpr)(nil), // 34: rewriter.RewriteCommonTableExprArgs.CommonTableExpr
-	nil, // 35: rewriter.RewriteCommonTableExprArgs.CteMapEntry
-	(*RewriteTableStaticArgs_RemoteTable)(nil),       // 36: rewriter.RewriteTableStaticArgs.RemoteTable
-	(*RewriteTableStaticArgs_TableWithDatabase)(nil), // 37: rewriter.RewriteTableStaticArgs.TableWithDatabase
-	nil, // 38: rewriter.RewriteTableStaticArgs.TableMapEntry
-	nil, // 39: rewriter.RewriteTableStaticArgs.RemoteTableMapEntry
-	nil, // 40: rewriter.RewriteTableStaticArgs.TableWithDatabaseMapEntry
-	nil, // 41: rewriter.RewriteTableDynamicArgs.DatabaseMapEntry
-	(*RewriteTableDynamicArgs_RemoteUpstream)(nil), // 42: rewriter.RewriteTableDynamicArgs.RemoteUpstream
-	nil,                                 // 43: rewriter.RewriteTableDynamicArgs.LogicalDatabaseToRemoteUpstreamIndexEntry
-	nil,                                 // 44: rewriter.RewriteTableDynamicArgs.RemoteUpstreamsEntry
-	(*StorageIntegrityArgs_Table)(nil),  // 45: rewriter.StorageIntegrityArgs.Table
-	nil,                                 // 46: rewriter.StorageIntegrityArgs.TablesEntry
-	(*RewriteSettingsArgs_Setting)(nil), // 47: rewriter.RewriteSettingsArgs.Setting
-	nil,                                 // 48: rewriter.RewriteSQLResponse.TableRewritesEntry
-	nil,                                 // 49: rewriter.RewriteSQLResponse.DatabaseRewritesEntry
-	(*PrivilegeDelta_Grantee)(nil),      // 50: rewriter.PrivilegeDelta.Grantee
-	nil,                                 // 51: rewriter.OptimizeRequest.TableSizesEntry
+	(SnapshotQueryCode)(0),                             // 7: rewriter.SnapshotQueryCode
+	(OptimizeCode)(0),                                  // 8: rewriter.OptimizeCode
+	(StorageIntegrityArgs_ReadMode)(0),                 // 9: rewriter.StorageIntegrityArgs.ReadMode
+	(PrivilegeDelta_Action)(0),                         // 10: rewriter.PrivilegeDelta.Action
+	(PrivilegeDelta_Scope)(0),                          // 11: rewriter.PrivilegeDelta.Scope
+	(*RewriteLimitArgs)(nil),                           // 12: rewriter.RewriteLimitArgs
+	(*RewriteOffsetArgs)(nil),                          // 13: rewriter.RewriteOffsetArgs
+	(*RewriteCommonTableExprArgs)(nil),                 // 14: rewriter.RewriteCommonTableExprArgs
+	(*RewriteTableStaticArgs)(nil),                     // 15: rewriter.RewriteTableStaticArgs
+	(*RewriteTableDynamicArgs)(nil),                    // 16: rewriter.RewriteTableDynamicArgs
+	(*StorageIntegrityArgs)(nil),                       // 17: rewriter.StorageIntegrityArgs
+	(*RewriteTableNameArgs)(nil),                       // 18: rewriter.RewriteTableNameArgs
+	(*RewriteSettingsArgs)(nil),                        // 19: rewriter.RewriteSettingsArgs
+	(*RewriteOption)(nil),                              // 20: rewriter.RewriteOption
+	(*RewriteSQLRequest)(nil),                          // 21: rewriter.RewriteSQLRequest
+	(*MaterializeSQLRequest)(nil),                      // 22: rewriter.MaterializeSQLRequest
+	(*MaterializationPolicy)(nil),                      // 23: rewriter.MaterializationPolicy
+	(*MaterializationInputs)(nil),                      // 24: rewriter.MaterializationInputs
+	(*MaterializedReplacement)(nil),                    // 25: rewriter.MaterializedReplacement
+	(*MaterializeSQLResponse)(nil),                     // 26: rewriter.MaterializeSQLResponse
+	(*RewriteSQLResponse)(nil),                         // 27: rewriter.RewriteSQLResponse
+	(*AccessedTable)(nil),                              // 28: rewriter.AccessedTable
+	(*PrivilegeDelta)(nil),                             // 29: rewriter.PrivilegeDelta
+	(*SnapshotQueryColumn)(nil),                        // 30: rewriter.SnapshotQueryColumn
+	(*SnapshotQueryCatalogTable)(nil),                  // 31: rewriter.SnapshotQueryCatalogTable
+	(*AnalyzeSnapshotQueryRequest)(nil),                // 32: rewriter.AnalyzeSnapshotQueryRequest
+	(*AnalyzeSnapshotQueryResponse)(nil),               // 33: rewriter.AnalyzeSnapshotQueryResponse
+	(*SnapshotScratchBinding)(nil),                     // 34: rewriter.SnapshotScratchBinding
+	(*PrepareSnapshotQueryRequest)(nil),                // 35: rewriter.PrepareSnapshotQueryRequest
+	(*PrepareSnapshotQueryResponse)(nil),               // 36: rewriter.PrepareSnapshotQueryResponse
+	(*OptimizeRequest)(nil),                            // 37: rewriter.OptimizeRequest
+	(*OptimizeResponse)(nil),                           // 38: rewriter.OptimizeResponse
+	(*RewriteErrorMessageRequest)(nil),                 // 39: rewriter.RewriteErrorMessageRequest
+	(*RewriteErrorMessageResponse)(nil),                // 40: rewriter.RewriteErrorMessageResponse
+	(*RewriteLimitArgs_ReplaceLimit)(nil),              // 41: rewriter.RewriteLimitArgs.ReplaceLimit
+	(*RewriteCommonTableExprArgs_CommonTableExpr)(nil), // 42: rewriter.RewriteCommonTableExprArgs.CommonTableExpr
+	nil, // 43: rewriter.RewriteCommonTableExprArgs.CteMapEntry
+	(*RewriteTableStaticArgs_RemoteTable)(nil),       // 44: rewriter.RewriteTableStaticArgs.RemoteTable
+	(*RewriteTableStaticArgs_TableWithDatabase)(nil), // 45: rewriter.RewriteTableStaticArgs.TableWithDatabase
+	nil, // 46: rewriter.RewriteTableStaticArgs.TableMapEntry
+	nil, // 47: rewriter.RewriteTableStaticArgs.RemoteTableMapEntry
+	nil, // 48: rewriter.RewriteTableStaticArgs.TableWithDatabaseMapEntry
+	nil, // 49: rewriter.RewriteTableDynamicArgs.DatabaseMapEntry
+	(*RewriteTableDynamicArgs_RemoteUpstream)(nil), // 50: rewriter.RewriteTableDynamicArgs.RemoteUpstream
+	nil,                                 // 51: rewriter.RewriteTableDynamicArgs.LogicalDatabaseToRemoteUpstreamIndexEntry
+	nil,                                 // 52: rewriter.RewriteTableDynamicArgs.RemoteUpstreamsEntry
+	(*StorageIntegrityArgs_Table)(nil),  // 53: rewriter.StorageIntegrityArgs.Table
+	nil,                                 // 54: rewriter.StorageIntegrityArgs.TablesEntry
+	(*RewriteSettingsArgs_Setting)(nil), // 55: rewriter.RewriteSettingsArgs.Setting
+	nil,                                 // 56: rewriter.RewriteSQLResponse.TableRewritesEntry
+	nil,                                 // 57: rewriter.RewriteSQLResponse.DatabaseRewritesEntry
+	(*PrivilegeDelta_Grantee)(nil),      // 58: rewriter.PrivilegeDelta.Grantee
+	nil,                                 // 59: rewriter.OptimizeRequest.TableSizesEntry
 }
 var file_rewriter_proto_depIdxs = []int32{
-	33, // 0: rewriter.RewriteLimitArgs.replace_limit:type_name -> rewriter.RewriteLimitArgs.ReplaceLimit
-	35, // 1: rewriter.RewriteCommonTableExprArgs.cte_map:type_name -> rewriter.RewriteCommonTableExprArgs.CteMapEntry
-	38, // 2: rewriter.RewriteTableStaticArgs.table_map:type_name -> rewriter.RewriteTableStaticArgs.TableMapEntry
-	39, // 3: rewriter.RewriteTableStaticArgs.remote_table_map:type_name -> rewriter.RewriteTableStaticArgs.RemoteTableMapEntry
-	40, // 4: rewriter.RewriteTableStaticArgs.table_with_database_map:type_name -> rewriter.RewriteTableStaticArgs.TableWithDatabaseMapEntry
-	41, // 5: rewriter.RewriteTableDynamicArgs.database_map:type_name -> rewriter.RewriteTableDynamicArgs.DatabaseMapEntry
-	43, // 6: rewriter.RewriteTableDynamicArgs.logical_database_to_remote_upstream_index:type_name -> rewriter.RewriteTableDynamicArgs.LogicalDatabaseToRemoteUpstreamIndexEntry
-	44, // 7: rewriter.RewriteTableDynamicArgs.remote_upstreams:type_name -> rewriter.RewriteTableDynamicArgs.RemoteUpstreamsEntry
-	16, // 8: rewriter.RewriteTableDynamicArgs.storage_integrity:type_name -> rewriter.StorageIntegrityArgs
-	46, // 9: rewriter.StorageIntegrityArgs.tables:type_name -> rewriter.StorageIntegrityArgs.TablesEntry
-	8,  // 10: rewriter.StorageIntegrityArgs.read_mode:type_name -> rewriter.StorageIntegrityArgs.ReadMode
+	41, // 0: rewriter.RewriteLimitArgs.replace_limit:type_name -> rewriter.RewriteLimitArgs.ReplaceLimit
+	43, // 1: rewriter.RewriteCommonTableExprArgs.cte_map:type_name -> rewriter.RewriteCommonTableExprArgs.CteMapEntry
+	46, // 2: rewriter.RewriteTableStaticArgs.table_map:type_name -> rewriter.RewriteTableStaticArgs.TableMapEntry
+	47, // 3: rewriter.RewriteTableStaticArgs.remote_table_map:type_name -> rewriter.RewriteTableStaticArgs.RemoteTableMapEntry
+	48, // 4: rewriter.RewriteTableStaticArgs.table_with_database_map:type_name -> rewriter.RewriteTableStaticArgs.TableWithDatabaseMapEntry
+	49, // 5: rewriter.RewriteTableDynamicArgs.database_map:type_name -> rewriter.RewriteTableDynamicArgs.DatabaseMapEntry
+	51, // 6: rewriter.RewriteTableDynamicArgs.logical_database_to_remote_upstream_index:type_name -> rewriter.RewriteTableDynamicArgs.LogicalDatabaseToRemoteUpstreamIndexEntry
+	52, // 7: rewriter.RewriteTableDynamicArgs.remote_upstreams:type_name -> rewriter.RewriteTableDynamicArgs.RemoteUpstreamsEntry
+	17, // 8: rewriter.RewriteTableDynamicArgs.storage_integrity:type_name -> rewriter.StorageIntegrityArgs
+	54, // 9: rewriter.StorageIntegrityArgs.tables:type_name -> rewriter.StorageIntegrityArgs.TablesEntry
+	9,  // 10: rewriter.StorageIntegrityArgs.read_mode:type_name -> rewriter.StorageIntegrityArgs.ReadMode
 	1,  // 11: rewriter.StorageIntegrityArgs.contract_version:type_name -> rewriter.StorageIntegrityContractVersion
-	15, // 12: rewriter.RewriteTableNameArgs.dynamic_args:type_name -> rewriter.RewriteTableDynamicArgs
-	14, // 13: rewriter.RewriteTableNameArgs.static_args:type_name -> rewriter.RewriteTableStaticArgs
-	47, // 14: rewriter.RewriteSettingsArgs.settings:type_name -> rewriter.RewriteSettingsArgs.Setting
+	16, // 12: rewriter.RewriteTableNameArgs.dynamic_args:type_name -> rewriter.RewriteTableDynamicArgs
+	15, // 13: rewriter.RewriteTableNameArgs.static_args:type_name -> rewriter.RewriteTableStaticArgs
+	55, // 14: rewriter.RewriteSettingsArgs.settings:type_name -> rewriter.RewriteSettingsArgs.Setting
 	0,  // 15: rewriter.RewriteOption.op:type_name -> rewriter.RewriteOp
-	17, // 16: rewriter.RewriteOption.table_name_args:type_name -> rewriter.RewriteTableNameArgs
-	11, // 17: rewriter.RewriteOption.limit_args:type_name -> rewriter.RewriteLimitArgs
-	12, // 18: rewriter.RewriteOption.offset_args:type_name -> rewriter.RewriteOffsetArgs
-	18, // 19: rewriter.RewriteOption.settings_args:type_name -> rewriter.RewriteSettingsArgs
-	13, // 20: rewriter.RewriteOption.common_table_expr_args:type_name -> rewriter.RewriteCommonTableExprArgs
-	19, // 21: rewriter.RewriteSQLRequest.options:type_name -> rewriter.RewriteOption
-	23, // 22: rewriter.MaterializeSQLRequest.inputs:type_name -> rewriter.MaterializationInputs
-	22, // 23: rewriter.MaterializeSQLRequest.policy:type_name -> rewriter.MaterializationPolicy
+	18, // 16: rewriter.RewriteOption.table_name_args:type_name -> rewriter.RewriteTableNameArgs
+	12, // 17: rewriter.RewriteOption.limit_args:type_name -> rewriter.RewriteLimitArgs
+	13, // 18: rewriter.RewriteOption.offset_args:type_name -> rewriter.RewriteOffsetArgs
+	19, // 19: rewriter.RewriteOption.settings_args:type_name -> rewriter.RewriteSettingsArgs
+	14, // 20: rewriter.RewriteOption.common_table_expr_args:type_name -> rewriter.RewriteCommonTableExprArgs
+	20, // 21: rewriter.RewriteSQLRequest.options:type_name -> rewriter.RewriteOption
+	24, // 22: rewriter.MaterializeSQLRequest.inputs:type_name -> rewriter.MaterializationInputs
+	23, // 23: rewriter.MaterializeSQLRequest.policy:type_name -> rewriter.MaterializationPolicy
 	3,  // 24: rewriter.MaterializeSQLResponse.code:type_name -> rewriter.MaterializeCode
-	24, // 25: rewriter.MaterializeSQLResponse.replacements:type_name -> rewriter.MaterializedReplacement
+	25, // 25: rewriter.MaterializeSQLResponse.replacements:type_name -> rewriter.MaterializedReplacement
 	4,  // 26: rewriter.RewriteSQLResponse.code:type_name -> rewriter.RewriteCode
 	5,  // 27: rewriter.RewriteSQLResponse.statement_type:type_name -> rewriter.StatementType
-	48, // 28: rewriter.RewriteSQLResponse.table_rewrites:type_name -> rewriter.RewriteSQLResponse.TableRewritesEntry
-	49, // 29: rewriter.RewriteSQLResponse.database_rewrites:type_name -> rewriter.RewriteSQLResponse.DatabaseRewritesEntry
-	27, // 30: rewriter.RewriteSQLResponse.original_accessed_tables:type_name -> rewriter.AccessedTable
-	28, // 31: rewriter.RewriteSQLResponse.privileges_deltas:type_name -> rewriter.PrivilegeDelta
+	56, // 28: rewriter.RewriteSQLResponse.table_rewrites:type_name -> rewriter.RewriteSQLResponse.TableRewritesEntry
+	57, // 29: rewriter.RewriteSQLResponse.database_rewrites:type_name -> rewriter.RewriteSQLResponse.DatabaseRewritesEntry
+	28, // 30: rewriter.RewriteSQLResponse.original_accessed_tables:type_name -> rewriter.AccessedTable
+	29, // 31: rewriter.RewriteSQLResponse.privileges_deltas:type_name -> rewriter.PrivilegeDelta
 	6,  // 32: rewriter.RewriteSQLResponse.existence_clause:type_name -> rewriter.ExistenceClause
 	1,  // 33: rewriter.RewriteSQLResponse.storage_integrity_contract_version:type_name -> rewriter.StorageIntegrityContractVersion
-	9,  // 34: rewriter.PrivilegeDelta.action:type_name -> rewriter.PrivilegeDelta.Action
-	10, // 35: rewriter.PrivilegeDelta.scope:type_name -> rewriter.PrivilegeDelta.Scope
-	50, // 36: rewriter.PrivilegeDelta.grantees:type_name -> rewriter.PrivilegeDelta.Grantee
-	51, // 37: rewriter.OptimizeRequest.table_sizes:type_name -> rewriter.OptimizeRequest.TableSizesEntry
-	7,  // 38: rewriter.OptimizeResponse.code:type_name -> rewriter.OptimizeCode
-	19, // 39: rewriter.RewriteErrorMessageRequest.options:type_name -> rewriter.RewriteOption
-	4,  // 40: rewriter.RewriteErrorMessageResponse.code:type_name -> rewriter.RewriteCode
-	34, // 41: rewriter.RewriteCommonTableExprArgs.CteMapEntry.value:type_name -> rewriter.RewriteCommonTableExprArgs.CommonTableExpr
-	36, // 42: rewriter.RewriteTableStaticArgs.RemoteTableMapEntry.value:type_name -> rewriter.RewriteTableStaticArgs.RemoteTable
-	37, // 43: rewriter.RewriteTableStaticArgs.TableWithDatabaseMapEntry.value:type_name -> rewriter.RewriteTableStaticArgs.TableWithDatabase
-	42, // 44: rewriter.RewriteTableDynamicArgs.RemoteUpstreamsEntry.value:type_name -> rewriter.RewriteTableDynamicArgs.RemoteUpstream
-	45, // 45: rewriter.StorageIntegrityArgs.TablesEntry.value:type_name -> rewriter.StorageIntegrityArgs.Table
-	2,  // 46: rewriter.RewriteSettingsArgs.Setting.type:type_name -> rewriter.SettingType
-	21, // 47: rewriter.RewriterService.MaterializeSQL:input_type -> rewriter.MaterializeSQLRequest
-	20, // 48: rewriter.RewriterService.Rewrite:input_type -> rewriter.RewriteSQLRequest
-	31, // 49: rewriter.RewriterService.RewriteErrorMessage:input_type -> rewriter.RewriteErrorMessageRequest
-	29, // 50: rewriter.RewriterService.Optimize:input_type -> rewriter.OptimizeRequest
-	25, // 51: rewriter.RewriterService.MaterializeSQL:output_type -> rewriter.MaterializeSQLResponse
-	26, // 52: rewriter.RewriterService.Rewrite:output_type -> rewriter.RewriteSQLResponse
-	32, // 53: rewriter.RewriterService.RewriteErrorMessage:output_type -> rewriter.RewriteErrorMessageResponse
-	30, // 54: rewriter.RewriterService.Optimize:output_type -> rewriter.OptimizeResponse
-	51, // [51:55] is the sub-list for method output_type
-	47, // [47:51] is the sub-list for method input_type
-	47, // [47:47] is the sub-list for extension type_name
-	47, // [47:47] is the sub-list for extension extendee
-	0,  // [0:47] is the sub-list for field type_name
+	10, // 34: rewriter.PrivilegeDelta.action:type_name -> rewriter.PrivilegeDelta.Action
+	11, // 35: rewriter.PrivilegeDelta.scope:type_name -> rewriter.PrivilegeDelta.Scope
+	58, // 36: rewriter.PrivilegeDelta.grantees:type_name -> rewriter.PrivilegeDelta.Grantee
+	30, // 37: rewriter.SnapshotQueryCatalogTable.columns:type_name -> rewriter.SnapshotQueryColumn
+	31, // 38: rewriter.AnalyzeSnapshotQueryRequest.catalog:type_name -> rewriter.SnapshotQueryCatalogTable
+	24, // 39: rewriter.AnalyzeSnapshotQueryRequest.inputs:type_name -> rewriter.MaterializationInputs
+	7,  // 40: rewriter.AnalyzeSnapshotQueryResponse.code:type_name -> rewriter.SnapshotQueryCode
+	32, // 41: rewriter.PrepareSnapshotQueryRequest.analysis:type_name -> rewriter.AnalyzeSnapshotQueryRequest
+	34, // 42: rewriter.PrepareSnapshotQueryRequest.bindings:type_name -> rewriter.SnapshotScratchBinding
+	7,  // 43: rewriter.PrepareSnapshotQueryResponse.code:type_name -> rewriter.SnapshotQueryCode
+	59, // 44: rewriter.OptimizeRequest.table_sizes:type_name -> rewriter.OptimizeRequest.TableSizesEntry
+	8,  // 45: rewriter.OptimizeResponse.code:type_name -> rewriter.OptimizeCode
+	20, // 46: rewriter.RewriteErrorMessageRequest.options:type_name -> rewriter.RewriteOption
+	4,  // 47: rewriter.RewriteErrorMessageResponse.code:type_name -> rewriter.RewriteCode
+	42, // 48: rewriter.RewriteCommonTableExprArgs.CteMapEntry.value:type_name -> rewriter.RewriteCommonTableExprArgs.CommonTableExpr
+	44, // 49: rewriter.RewriteTableStaticArgs.RemoteTableMapEntry.value:type_name -> rewriter.RewriteTableStaticArgs.RemoteTable
+	45, // 50: rewriter.RewriteTableStaticArgs.TableWithDatabaseMapEntry.value:type_name -> rewriter.RewriteTableStaticArgs.TableWithDatabase
+	50, // 51: rewriter.RewriteTableDynamicArgs.RemoteUpstreamsEntry.value:type_name -> rewriter.RewriteTableDynamicArgs.RemoteUpstream
+	53, // 52: rewriter.StorageIntegrityArgs.TablesEntry.value:type_name -> rewriter.StorageIntegrityArgs.Table
+	2,  // 53: rewriter.RewriteSettingsArgs.Setting.type:type_name -> rewriter.SettingType
+	22, // 54: rewriter.RewriterService.MaterializeSQL:input_type -> rewriter.MaterializeSQLRequest
+	21, // 55: rewriter.RewriterService.Rewrite:input_type -> rewriter.RewriteSQLRequest
+	39, // 56: rewriter.RewriterService.RewriteErrorMessage:input_type -> rewriter.RewriteErrorMessageRequest
+	37, // 57: rewriter.RewriterService.Optimize:input_type -> rewriter.OptimizeRequest
+	32, // 58: rewriter.RewriterService.AnalyzeSnapshotQuery:input_type -> rewriter.AnalyzeSnapshotQueryRequest
+	35, // 59: rewriter.RewriterService.PrepareSnapshotQuery:input_type -> rewriter.PrepareSnapshotQueryRequest
+	26, // 60: rewriter.RewriterService.MaterializeSQL:output_type -> rewriter.MaterializeSQLResponse
+	27, // 61: rewriter.RewriterService.Rewrite:output_type -> rewriter.RewriteSQLResponse
+	40, // 62: rewriter.RewriterService.RewriteErrorMessage:output_type -> rewriter.RewriteErrorMessageResponse
+	38, // 63: rewriter.RewriterService.Optimize:output_type -> rewriter.OptimizeResponse
+	33, // 64: rewriter.RewriterService.AnalyzeSnapshotQuery:output_type -> rewriter.AnalyzeSnapshotQueryResponse
+	36, // 65: rewriter.RewriterService.PrepareSnapshotQuery:output_type -> rewriter.PrepareSnapshotQueryResponse
+	60, // [60:66] is the sub-list for method output_type
+	54, // [54:60] is the sub-list for method input_type
+	54, // [54:54] is the sub-list for extension type_name
+	54, // [54:54] is the sub-list for extension extendee
+	0,  // [0:54] is the sub-list for field type_name
 }
 
 func init() { file_rewriter_proto_init() }
@@ -3815,8 +4535,8 @@ func file_rewriter_proto_init() {
 		(*RewriteOption_CommonTableExprArgs)(nil),
 	}
 	file_rewriter_proto_msgTypes[12].OneofWrappers = []any{}
-	file_rewriter_proto_msgTypes[18].OneofWrappers = []any{}
-	file_rewriter_proto_msgTypes[36].OneofWrappers = []any{
+	file_rewriter_proto_msgTypes[25].OneofWrappers = []any{}
+	file_rewriter_proto_msgTypes[43].OneofWrappers = []any{
 		(*RewriteSettingsArgs_Setting_StringValue)(nil),
 		(*RewriteSettingsArgs_Setting_BoolValue)(nil),
 		(*RewriteSettingsArgs_Setting_IntValue)(nil),
@@ -3827,8 +4547,8 @@ func file_rewriter_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_rewriter_proto_rawDesc), len(file_rewriter_proto_rawDesc)),
-			NumEnums:      11,
-			NumMessages:   41,
+			NumEnums:      12,
+			NumMessages:   48,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
