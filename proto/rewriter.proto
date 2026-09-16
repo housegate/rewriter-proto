@@ -906,6 +906,130 @@ message PrivilegeDelta {
     bool grant_option = 10;
 }
 
+// =============================================================================
+// Versioned snapshot-query analysis and scratch preparation
+// =============================================================================
+
+// Result vocabulary shared by AnalyzeSnapshotQuery and PrepareSnapshotQuery.
+//
+// The RPC contract version is exactly 1. An application-level response
+// acknowledges the request only by echoing contract_version=1 and the exact
+// query_profile_id after the backend has established that profile is installed
+// and admitted for the request. Catalog contents describe authenticated schema;
+// they do not prove that a caller-named profile exists or is authorized.
+//
+// These declarations freeze the wire vocabulary only. Implementations enforce
+// version/profile admission, parse and AST classification, materialization,
+// catalog validation, and preparation invariants.
+enum SnapshotQueryCode {
+    UNSPECIFIED = 0;
+    SUCCESS = 1;
+    UNSUPPORTED = 2;
+    INVALID_INPUT = 3;
+    PROFILE_UNAVAILABLE = 4;
+    MATERIALIZATION_FAILED = 5;
+    // Classification-only result. It is valid only after successful
+    // single-statement AST classification proves an ordinary non-snapshot
+    // statement. Parse failures, unknown statement classes, and forbidden
+    // snapshot-query shapes must use an error code instead. A response with
+    // this code acknowledges the exact version/profile and leaves every
+    // executable SQL, target, column, and read-set output empty.
+    NOT_SNAPSHOT_QUERY = 6;
+}
+
+// One authenticated column in SnapshotQueryCatalogTable.columns. Entries are
+// ordered exactly as the table schema, not in an INSERT target-list order.
+message SnapshotQueryColumn {
+    string name = 1;
+    string type = 2;
+}
+
+// Authenticated schema metadata supplied by the caller for a table visible to
+// analysis. The catalog cannot be used to invent or activate a query profile.
+message SnapshotQueryCatalogTable {
+    string database = 1;
+    string table = 2;
+    string table_id = 3;
+    string schema_hash = 4;
+    // Authenticated target-schema order.
+    repeated SnapshotQueryColumn columns = 5;
+}
+
+// Analyze one statement under the versioned snapshot-query profile.
+message AnalyzeSnapshotQueryRequest {
+    // Must be exactly 1. The response acknowledges the accepted version.
+    uint32 contract_version = 1;
+    // Identifies an installed and caller-admitted profile; the catalog does
+    // not establish support for an arbitrary identifier.
+    string query_profile_id = 2;
+    string sql = 3;
+    string logical_database = 4;
+    repeated SnapshotQueryCatalogTable catalog = 5;
+    // False requires inputs to be absent and a snapshot query to contain no
+    // residual volatility. True requests complete deterministic replacement;
+    // missing pools or incomplete replacement fail materialization.
+    bool materialize = 6;
+    MaterializationInputs inputs = 7;
+}
+
+message AnalyzeSnapshotQueryResponse {
+    // Echoed as 1, with the exact query_profile_id, only after version/profile
+    // admission. See SnapshotQueryCode for NOT_SNAPSHOT_QUERY constraints.
+    uint32 contract_version = 1;
+    string query_profile_id = 2;
+    SnapshotQueryCode code = 3;
+    string message = 4;
+    // Executable only on SUCCESS. Empty on every error and on
+    // NOT_SNAPSHOT_QUERY.
+    string sql_after_materialization = 5;
+    // Populated only on SUCCESS.
+    string target_table_id = 6;
+    // INSERT positional target-list order, which can differ from authenticated
+    // target-schema order.
+    repeated string target_columns = 7;
+    // Sorted unique table-ID order.
+    repeated string read_table_ids = 8;
+}
+
+// Exact scratch location for one analyzed read table.
+message SnapshotScratchBinding {
+    string table_id = 1;
+    string scratch_database = 2;
+    string scratch_table = 3;
+}
+
+// Prepare an analyzed snapshot query to read from caller-created scratch
+// tables. Implementations revalidate analysis with materialize=false and
+// require bindings in sorted unique table-ID order with an exact one-to-one
+// match to the analyzed read set. Preparation never accepts
+// NOT_SNAPSHOT_QUERY. These runtime admission rules are not enforced by the
+// protobuf declaration itself.
+message PrepareSnapshotQueryRequest {
+    AnalyzeSnapshotQueryRequest analysis = 1;
+    repeated SnapshotScratchBinding bindings = 2;
+}
+
+message PrepareSnapshotQueryResponse {
+    // Echoed as 1, with the exact query_profile_id, only after version/profile
+    // admission.
+    uint32 contract_version = 1;
+    string query_profile_id = 2;
+    SnapshotQueryCode code = 3;
+    string message = 4;
+    // Executable only on SUCCESS; empty for every error. Its outer projection
+    // is reordered to authenticated target-schema order and applies only
+    // profile-admitted coercions to those exact target types.
+    string select_sql = 5;
+    // Populated only on SUCCESS.
+    string target_table_id = 6;
+    // Authenticated target-schema order, deliberately different from the
+    // analysis response's INSERT target-list order when the INSERT permutes
+    // columns.
+    repeated string target_columns = 7;
+    // Sorted unique table-ID order, matching the required bindings exactly.
+    repeated string read_table_ids = 8;
+}
+
 service RewriterService {
     rpc MaterializeSQL (MaterializeSQLRequest) returns (MaterializeSQLResponse) {}
     rpc Rewrite (RewriteSQLRequest) returns (RewriteSQLResponse) {}
@@ -918,6 +1042,13 @@ service RewriterService {
     // and a non-OK OptimizeCode — callers can always fall back to running
     // the input SQL unchanged.
     rpc Optimize (OptimizeRequest) returns (OptimizeResponse) {}
+    // Analyze and classify a statement without preparing scratch-table SQL.
+    // An unavailable implementation returns the transport status UNIMPLEMENTED;
+    // callers must not treat that status as an application-level code.
+    rpc AnalyzeSnapshotQuery (AnalyzeSnapshotQueryRequest) returns (AnalyzeSnapshotQueryResponse) {}
+    // Revalidate analysis and bind its exact read set to scratch tables.
+    // An unavailable implementation returns the transport status UNIMPLEMENTED.
+    rpc PrepareSnapshotQuery (PrepareSnapshotQueryRequest) returns (PrepareSnapshotQueryResponse) {}
 }
 
 // Apply optimizations to a SQL string that has already been through Rewrite.
