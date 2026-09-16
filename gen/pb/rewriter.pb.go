@@ -740,6 +740,72 @@ func (OptimizeCode) EnumDescriptor() ([]byte, []int) {
 	return file_rewriter_proto_rawDescGZIP(), []int{8}
 }
 
+// How ClickHouse generates a declared column value. The initial snapshot-query
+// profile admits only an explicit SNAPSHOT_QUERY_COLUMN_GENERATION_ORDINARY
+// value with an empty default_expression. UNSPECIFIED (including metadata
+// omitted by an old client), unknown numeric values, OTHER, DEFAULT (including
+// a constant default), MATERIALIZED, ALIAS, and ORDINARY with a non-empty
+// default_expression are ineligible and must be refused by the future handler.
+// Unknown numeric values remain transportable protobuf values; transportability
+// is not runtime admission.
+type SnapshotQueryColumnGeneration int32
+
+const (
+	SnapshotQueryColumnGeneration_SNAPSHOT_QUERY_COLUMN_GENERATION_UNSPECIFIED  SnapshotQueryColumnGeneration = 0
+	SnapshotQueryColumnGeneration_SNAPSHOT_QUERY_COLUMN_GENERATION_ORDINARY     SnapshotQueryColumnGeneration = 1
+	SnapshotQueryColumnGeneration_SNAPSHOT_QUERY_COLUMN_GENERATION_DEFAULT      SnapshotQueryColumnGeneration = 2
+	SnapshotQueryColumnGeneration_SNAPSHOT_QUERY_COLUMN_GENERATION_MATERIALIZED SnapshotQueryColumnGeneration = 3
+	SnapshotQueryColumnGeneration_SNAPSHOT_QUERY_COLUMN_GENERATION_ALIAS        SnapshotQueryColumnGeneration = 4
+	SnapshotQueryColumnGeneration_SNAPSHOT_QUERY_COLUMN_GENERATION_OTHER        SnapshotQueryColumnGeneration = 5
+)
+
+// Enum value maps for SnapshotQueryColumnGeneration.
+var (
+	SnapshotQueryColumnGeneration_name = map[int32]string{
+		0: "SNAPSHOT_QUERY_COLUMN_GENERATION_UNSPECIFIED",
+		1: "SNAPSHOT_QUERY_COLUMN_GENERATION_ORDINARY",
+		2: "SNAPSHOT_QUERY_COLUMN_GENERATION_DEFAULT",
+		3: "SNAPSHOT_QUERY_COLUMN_GENERATION_MATERIALIZED",
+		4: "SNAPSHOT_QUERY_COLUMN_GENERATION_ALIAS",
+		5: "SNAPSHOT_QUERY_COLUMN_GENERATION_OTHER",
+	}
+	SnapshotQueryColumnGeneration_value = map[string]int32{
+		"SNAPSHOT_QUERY_COLUMN_GENERATION_UNSPECIFIED":  0,
+		"SNAPSHOT_QUERY_COLUMN_GENERATION_ORDINARY":     1,
+		"SNAPSHOT_QUERY_COLUMN_GENERATION_DEFAULT":      2,
+		"SNAPSHOT_QUERY_COLUMN_GENERATION_MATERIALIZED": 3,
+		"SNAPSHOT_QUERY_COLUMN_GENERATION_ALIAS":        4,
+		"SNAPSHOT_QUERY_COLUMN_GENERATION_OTHER":        5,
+	}
+)
+
+func (x SnapshotQueryColumnGeneration) Enum() *SnapshotQueryColumnGeneration {
+	p := new(SnapshotQueryColumnGeneration)
+	*p = x
+	return p
+}
+
+func (x SnapshotQueryColumnGeneration) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (SnapshotQueryColumnGeneration) Descriptor() protoreflect.EnumDescriptor {
+	return file_rewriter_proto_enumTypes[9].Descriptor()
+}
+
+func (SnapshotQueryColumnGeneration) Type() protoreflect.EnumType {
+	return &file_rewriter_proto_enumTypes[9]
+}
+
+func (x SnapshotQueryColumnGeneration) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use SnapshotQueryColumnGeneration.Descriptor instead.
+func (SnapshotQueryColumnGeneration) EnumDescriptor() ([]byte, []int) {
+	return file_rewriter_proto_rawDescGZIP(), []int{9}
+}
+
 type StorageIntegrityArgs_ReadMode int32
 
 const (
@@ -773,11 +839,11 @@ func (x StorageIntegrityArgs_ReadMode) String() string {
 }
 
 func (StorageIntegrityArgs_ReadMode) Descriptor() protoreflect.EnumDescriptor {
-	return file_rewriter_proto_enumTypes[9].Descriptor()
+	return file_rewriter_proto_enumTypes[10].Descriptor()
 }
 
 func (StorageIntegrityArgs_ReadMode) Type() protoreflect.EnumType {
-	return &file_rewriter_proto_enumTypes[9]
+	return &file_rewriter_proto_enumTypes[10]
 }
 
 func (x StorageIntegrityArgs_ReadMode) Number() protoreflect.EnumNumber {
@@ -822,11 +888,11 @@ func (x PrivilegeDelta_Action) String() string {
 }
 
 func (PrivilegeDelta_Action) Descriptor() protoreflect.EnumDescriptor {
-	return file_rewriter_proto_enumTypes[10].Descriptor()
+	return file_rewriter_proto_enumTypes[11].Descriptor()
 }
 
 func (PrivilegeDelta_Action) Type() protoreflect.EnumType {
-	return &file_rewriter_proto_enumTypes[10]
+	return &file_rewriter_proto_enumTypes[11]
 }
 
 func (x PrivilegeDelta_Action) Number() protoreflect.EnumNumber {
@@ -873,11 +939,11 @@ func (x PrivilegeDelta_Scope) String() string {
 }
 
 func (PrivilegeDelta_Scope) Descriptor() protoreflect.EnumDescriptor {
-	return file_rewriter_proto_enumTypes[11].Descriptor()
+	return file_rewriter_proto_enumTypes[12].Descriptor()
 }
 
 func (PrivilegeDelta_Scope) Type() protoreflect.EnumType {
-	return &file_rewriter_proto_enumTypes[11]
+	return &file_rewriter_proto_enumTypes[12]
 }
 
 func (x PrivilegeDelta_Scope) Number() protoreflect.EnumNumber {
@@ -2617,13 +2683,21 @@ func (x *PrivilegeDelta) GetGrantOption() bool {
 }
 
 // One authenticated column in SnapshotQueryCatalogTable.columns. Entries are
-// ordered exactly as the table schema, not in an INSERT target-list order.
+// ordered exactly as the table schema, not in an INSERT target-list order. The
+// initial profile captures all declared user columns before eligibility checks:
+// every target column and every column of each actually referenced read table
+// must be eligible. An unrelated untouched table in the complete manifest does
+// not invalidate a query by itself.
 type SnapshotQueryColumn struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Type          string                 `protobuf:"bytes,2,opt,name=type,proto3" json:"type,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state      protoimpl.MessageState        `protogen:"open.v1"`
+	Name       string                        `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Type       string                        `protobuf:"bytes,2,opt,name=type,proto3" json:"type,omitempty"`
+	Generation SnapshotQueryColumnGeneration `protobuf:"varint,3,opt,name=generation,proto3,enum=rewriter.SnapshotQueryColumnGeneration" json:"generation,omitempty"`
+	// ClickHouse DEFAULT/MATERIALIZED/ALIAS expression text when present.
+	// Initial-profile ORDINARY columns require this to be empty.
+	DefaultExpression string `protobuf:"bytes,4,opt,name=default_expression,json=defaultExpression,proto3" json:"default_expression,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *SnapshotQueryColumn) Reset() {
@@ -2670,8 +2744,27 @@ func (x *SnapshotQueryColumn) GetType() string {
 	return ""
 }
 
+func (x *SnapshotQueryColumn) GetGeneration() SnapshotQueryColumnGeneration {
+	if x != nil {
+		return x.Generation
+	}
+	return SnapshotQueryColumnGeneration_SNAPSHOT_QUERY_COLUMN_GENERATION_UNSPECIFIED
+}
+
+func (x *SnapshotQueryColumn) GetDefaultExpression() string {
+	if x != nil {
+		return x.DefaultExpression
+	}
+	return ""
+}
+
 // Authenticated schema metadata supplied by the caller for a table visible to
-// analysis. The catalog cannot be used to invent or activate a query profile.
+// analysis. The catalog must be projected from an authenticated exact-snapshot
+// semantic artifact. Legacy name/type schema hashes, arbitrary labels, or live
+// metadata alone do not authenticate generation/default-expression semantics,
+// and the catalog cannot invent or activate a query profile. Verification of
+// that artifact/authority path is outside these protobuf declarations. These
+// added fields do not alter any legacy payload or legacy schema hash.
 type SnapshotQueryCatalogTable struct {
 	state      protoimpl.MessageState `protogen:"open.v1"`
 	Database   string                 `protobuf:"bytes,1,opt,name=database,proto3" json:"database,omitempty"`
@@ -4219,10 +4312,14 @@ const file_rewriter_proto_rawDesc = "" +
 	"\x05Scope\x12\x15\n" +
 	"\x11SCOPE_UNSPECIFIED\x10\x00\x12\x0f\n" +
 	"\vSCOPE_TABLE\x10\x01\x12\x12\n" +
-	"\x0eSCOPE_DATABASE\x10\x02\"=\n" +
+	"\x0eSCOPE_DATABASE\x10\x02\"\xb5\x01\n" +
 	"\x13SnapshotQueryColumn\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x12\n" +
-	"\x04type\x18\x02 \x01(\tR\x04type\"\xc2\x01\n" +
+	"\x04type\x18\x02 \x01(\tR\x04type\x12G\n" +
+	"\n" +
+	"generation\x18\x03 \x01(\x0e2'.rewriter.SnapshotQueryColumnGenerationR\n" +
+	"generation\x12-\n" +
+	"\x12default_expression\x18\x04 \x01(\tR\x11defaultExpression\"\xc2\x01\n" +
 	"\x19SnapshotQueryCatalogTable\x12\x1a\n" +
 	"\bdatabase\x18\x01 \x01(\tR\bdatabase\x12\x14\n" +
 	"\x05table\x18\x02 \x01(\tR\x05table\x12\x19\n" +
@@ -4357,7 +4454,14 @@ const file_rewriter_proto_rawDesc = "" +
 	"\n" +
 	"OptimizeOK\x10\x00\x12\x17\n" +
 	"\x13OptimizeSyntaxError\x10\x01\x12\x19\n" +
-	"\x15OptimizeUnoptimizable\x10\x022\xad\x04\n" +
+	"\x15OptimizeUnoptimizable\x10\x02*\xb9\x02\n" +
+	"\x1dSnapshotQueryColumnGeneration\x120\n" +
+	",SNAPSHOT_QUERY_COLUMN_GENERATION_UNSPECIFIED\x10\x00\x12-\n" +
+	")SNAPSHOT_QUERY_COLUMN_GENERATION_ORDINARY\x10\x01\x12,\n" +
+	"(SNAPSHOT_QUERY_COLUMN_GENERATION_DEFAULT\x10\x02\x121\n" +
+	"-SNAPSHOT_QUERY_COLUMN_GENERATION_MATERIALIZED\x10\x03\x12*\n" +
+	"&SNAPSHOT_QUERY_COLUMN_GENERATION_ALIAS\x10\x04\x12*\n" +
+	"&SNAPSHOT_QUERY_COLUMN_GENERATION_OTHER\x10\x052\xad\x04\n" +
 	"\x0fRewriterService\x12U\n" +
 	"\x0eMaterializeSQL\x12\x1f.rewriter.MaterializeSQLRequest\x1a .rewriter.MaterializeSQLResponse\"\x00\x12F\n" +
 	"\aRewrite\x12\x1b.rewriter.RewriteSQLRequest\x1a\x1c.rewriter.RewriteSQLResponse\"\x00\x12d\n" +
@@ -4378,7 +4482,7 @@ func file_rewriter_proto_rawDescGZIP() []byte {
 	return file_rewriter_proto_rawDescData
 }
 
-var file_rewriter_proto_enumTypes = make([]protoimpl.EnumInfo, 12)
+var file_rewriter_proto_enumTypes = make([]protoimpl.EnumInfo, 13)
 var file_rewriter_proto_msgTypes = make([]protoimpl.MessageInfo, 48)
 var file_rewriter_proto_goTypes = []any{
 	(RewriteOp)(0),                                     // 0: rewriter.RewriteOp
@@ -4390,130 +4494,132 @@ var file_rewriter_proto_goTypes = []any{
 	(ExistenceClause)(0),                               // 6: rewriter.ExistenceClause
 	(SnapshotQueryCode)(0),                             // 7: rewriter.SnapshotQueryCode
 	(OptimizeCode)(0),                                  // 8: rewriter.OptimizeCode
-	(StorageIntegrityArgs_ReadMode)(0),                 // 9: rewriter.StorageIntegrityArgs.ReadMode
-	(PrivilegeDelta_Action)(0),                         // 10: rewriter.PrivilegeDelta.Action
-	(PrivilegeDelta_Scope)(0),                          // 11: rewriter.PrivilegeDelta.Scope
-	(*RewriteLimitArgs)(nil),                           // 12: rewriter.RewriteLimitArgs
-	(*RewriteOffsetArgs)(nil),                          // 13: rewriter.RewriteOffsetArgs
-	(*RewriteCommonTableExprArgs)(nil),                 // 14: rewriter.RewriteCommonTableExprArgs
-	(*RewriteTableStaticArgs)(nil),                     // 15: rewriter.RewriteTableStaticArgs
-	(*RewriteTableDynamicArgs)(nil),                    // 16: rewriter.RewriteTableDynamicArgs
-	(*StorageIntegrityArgs)(nil),                       // 17: rewriter.StorageIntegrityArgs
-	(*RewriteTableNameArgs)(nil),                       // 18: rewriter.RewriteTableNameArgs
-	(*RewriteSettingsArgs)(nil),                        // 19: rewriter.RewriteSettingsArgs
-	(*RewriteOption)(nil),                              // 20: rewriter.RewriteOption
-	(*RewriteSQLRequest)(nil),                          // 21: rewriter.RewriteSQLRequest
-	(*MaterializeSQLRequest)(nil),                      // 22: rewriter.MaterializeSQLRequest
-	(*MaterializationPolicy)(nil),                      // 23: rewriter.MaterializationPolicy
-	(*MaterializationInputs)(nil),                      // 24: rewriter.MaterializationInputs
-	(*MaterializedReplacement)(nil),                    // 25: rewriter.MaterializedReplacement
-	(*MaterializeSQLResponse)(nil),                     // 26: rewriter.MaterializeSQLResponse
-	(*RewriteSQLResponse)(nil),                         // 27: rewriter.RewriteSQLResponse
-	(*AccessedTable)(nil),                              // 28: rewriter.AccessedTable
-	(*PrivilegeDelta)(nil),                             // 29: rewriter.PrivilegeDelta
-	(*SnapshotQueryColumn)(nil),                        // 30: rewriter.SnapshotQueryColumn
-	(*SnapshotQueryCatalogTable)(nil),                  // 31: rewriter.SnapshotQueryCatalogTable
-	(*AnalyzeSnapshotQueryRequest)(nil),                // 32: rewriter.AnalyzeSnapshotQueryRequest
-	(*AnalyzeSnapshotQueryResponse)(nil),               // 33: rewriter.AnalyzeSnapshotQueryResponse
-	(*SnapshotScratchBinding)(nil),                     // 34: rewriter.SnapshotScratchBinding
-	(*PrepareSnapshotQueryRequest)(nil),                // 35: rewriter.PrepareSnapshotQueryRequest
-	(*PrepareSnapshotQueryResponse)(nil),               // 36: rewriter.PrepareSnapshotQueryResponse
-	(*OptimizeRequest)(nil),                            // 37: rewriter.OptimizeRequest
-	(*OptimizeResponse)(nil),                           // 38: rewriter.OptimizeResponse
-	(*RewriteErrorMessageRequest)(nil),                 // 39: rewriter.RewriteErrorMessageRequest
-	(*RewriteErrorMessageResponse)(nil),                // 40: rewriter.RewriteErrorMessageResponse
-	(*RewriteLimitArgs_ReplaceLimit)(nil),              // 41: rewriter.RewriteLimitArgs.ReplaceLimit
-	(*RewriteCommonTableExprArgs_CommonTableExpr)(nil), // 42: rewriter.RewriteCommonTableExprArgs.CommonTableExpr
-	nil, // 43: rewriter.RewriteCommonTableExprArgs.CteMapEntry
-	(*RewriteTableStaticArgs_RemoteTable)(nil),       // 44: rewriter.RewriteTableStaticArgs.RemoteTable
-	(*RewriteTableStaticArgs_TableWithDatabase)(nil), // 45: rewriter.RewriteTableStaticArgs.TableWithDatabase
-	nil, // 46: rewriter.RewriteTableStaticArgs.TableMapEntry
-	nil, // 47: rewriter.RewriteTableStaticArgs.RemoteTableMapEntry
-	nil, // 48: rewriter.RewriteTableStaticArgs.TableWithDatabaseMapEntry
-	nil, // 49: rewriter.RewriteTableDynamicArgs.DatabaseMapEntry
-	(*RewriteTableDynamicArgs_RemoteUpstream)(nil), // 50: rewriter.RewriteTableDynamicArgs.RemoteUpstream
-	nil,                                 // 51: rewriter.RewriteTableDynamicArgs.LogicalDatabaseToRemoteUpstreamIndexEntry
-	nil,                                 // 52: rewriter.RewriteTableDynamicArgs.RemoteUpstreamsEntry
-	(*StorageIntegrityArgs_Table)(nil),  // 53: rewriter.StorageIntegrityArgs.Table
-	nil,                                 // 54: rewriter.StorageIntegrityArgs.TablesEntry
-	(*RewriteSettingsArgs_Setting)(nil), // 55: rewriter.RewriteSettingsArgs.Setting
-	nil,                                 // 56: rewriter.RewriteSQLResponse.TableRewritesEntry
-	nil,                                 // 57: rewriter.RewriteSQLResponse.DatabaseRewritesEntry
-	(*PrivilegeDelta_Grantee)(nil),      // 58: rewriter.PrivilegeDelta.Grantee
-	nil,                                 // 59: rewriter.OptimizeRequest.TableSizesEntry
+	(SnapshotQueryColumnGeneration)(0),                 // 9: rewriter.SnapshotQueryColumnGeneration
+	(StorageIntegrityArgs_ReadMode)(0),                 // 10: rewriter.StorageIntegrityArgs.ReadMode
+	(PrivilegeDelta_Action)(0),                         // 11: rewriter.PrivilegeDelta.Action
+	(PrivilegeDelta_Scope)(0),                          // 12: rewriter.PrivilegeDelta.Scope
+	(*RewriteLimitArgs)(nil),                           // 13: rewriter.RewriteLimitArgs
+	(*RewriteOffsetArgs)(nil),                          // 14: rewriter.RewriteOffsetArgs
+	(*RewriteCommonTableExprArgs)(nil),                 // 15: rewriter.RewriteCommonTableExprArgs
+	(*RewriteTableStaticArgs)(nil),                     // 16: rewriter.RewriteTableStaticArgs
+	(*RewriteTableDynamicArgs)(nil),                    // 17: rewriter.RewriteTableDynamicArgs
+	(*StorageIntegrityArgs)(nil),                       // 18: rewriter.StorageIntegrityArgs
+	(*RewriteTableNameArgs)(nil),                       // 19: rewriter.RewriteTableNameArgs
+	(*RewriteSettingsArgs)(nil),                        // 20: rewriter.RewriteSettingsArgs
+	(*RewriteOption)(nil),                              // 21: rewriter.RewriteOption
+	(*RewriteSQLRequest)(nil),                          // 22: rewriter.RewriteSQLRequest
+	(*MaterializeSQLRequest)(nil),                      // 23: rewriter.MaterializeSQLRequest
+	(*MaterializationPolicy)(nil),                      // 24: rewriter.MaterializationPolicy
+	(*MaterializationInputs)(nil),                      // 25: rewriter.MaterializationInputs
+	(*MaterializedReplacement)(nil),                    // 26: rewriter.MaterializedReplacement
+	(*MaterializeSQLResponse)(nil),                     // 27: rewriter.MaterializeSQLResponse
+	(*RewriteSQLResponse)(nil),                         // 28: rewriter.RewriteSQLResponse
+	(*AccessedTable)(nil),                              // 29: rewriter.AccessedTable
+	(*PrivilegeDelta)(nil),                             // 30: rewriter.PrivilegeDelta
+	(*SnapshotQueryColumn)(nil),                        // 31: rewriter.SnapshotQueryColumn
+	(*SnapshotQueryCatalogTable)(nil),                  // 32: rewriter.SnapshotQueryCatalogTable
+	(*AnalyzeSnapshotQueryRequest)(nil),                // 33: rewriter.AnalyzeSnapshotQueryRequest
+	(*AnalyzeSnapshotQueryResponse)(nil),               // 34: rewriter.AnalyzeSnapshotQueryResponse
+	(*SnapshotScratchBinding)(nil),                     // 35: rewriter.SnapshotScratchBinding
+	(*PrepareSnapshotQueryRequest)(nil),                // 36: rewriter.PrepareSnapshotQueryRequest
+	(*PrepareSnapshotQueryResponse)(nil),               // 37: rewriter.PrepareSnapshotQueryResponse
+	(*OptimizeRequest)(nil),                            // 38: rewriter.OptimizeRequest
+	(*OptimizeResponse)(nil),                           // 39: rewriter.OptimizeResponse
+	(*RewriteErrorMessageRequest)(nil),                 // 40: rewriter.RewriteErrorMessageRequest
+	(*RewriteErrorMessageResponse)(nil),                // 41: rewriter.RewriteErrorMessageResponse
+	(*RewriteLimitArgs_ReplaceLimit)(nil),              // 42: rewriter.RewriteLimitArgs.ReplaceLimit
+	(*RewriteCommonTableExprArgs_CommonTableExpr)(nil), // 43: rewriter.RewriteCommonTableExprArgs.CommonTableExpr
+	nil, // 44: rewriter.RewriteCommonTableExprArgs.CteMapEntry
+	(*RewriteTableStaticArgs_RemoteTable)(nil),       // 45: rewriter.RewriteTableStaticArgs.RemoteTable
+	(*RewriteTableStaticArgs_TableWithDatabase)(nil), // 46: rewriter.RewriteTableStaticArgs.TableWithDatabase
+	nil, // 47: rewriter.RewriteTableStaticArgs.TableMapEntry
+	nil, // 48: rewriter.RewriteTableStaticArgs.RemoteTableMapEntry
+	nil, // 49: rewriter.RewriteTableStaticArgs.TableWithDatabaseMapEntry
+	nil, // 50: rewriter.RewriteTableDynamicArgs.DatabaseMapEntry
+	(*RewriteTableDynamicArgs_RemoteUpstream)(nil), // 51: rewriter.RewriteTableDynamicArgs.RemoteUpstream
+	nil,                                 // 52: rewriter.RewriteTableDynamicArgs.LogicalDatabaseToRemoteUpstreamIndexEntry
+	nil,                                 // 53: rewriter.RewriteTableDynamicArgs.RemoteUpstreamsEntry
+	(*StorageIntegrityArgs_Table)(nil),  // 54: rewriter.StorageIntegrityArgs.Table
+	nil,                                 // 55: rewriter.StorageIntegrityArgs.TablesEntry
+	(*RewriteSettingsArgs_Setting)(nil), // 56: rewriter.RewriteSettingsArgs.Setting
+	nil,                                 // 57: rewriter.RewriteSQLResponse.TableRewritesEntry
+	nil,                                 // 58: rewriter.RewriteSQLResponse.DatabaseRewritesEntry
+	(*PrivilegeDelta_Grantee)(nil),      // 59: rewriter.PrivilegeDelta.Grantee
+	nil,                                 // 60: rewriter.OptimizeRequest.TableSizesEntry
 }
 var file_rewriter_proto_depIdxs = []int32{
-	41, // 0: rewriter.RewriteLimitArgs.replace_limit:type_name -> rewriter.RewriteLimitArgs.ReplaceLimit
-	43, // 1: rewriter.RewriteCommonTableExprArgs.cte_map:type_name -> rewriter.RewriteCommonTableExprArgs.CteMapEntry
-	46, // 2: rewriter.RewriteTableStaticArgs.table_map:type_name -> rewriter.RewriteTableStaticArgs.TableMapEntry
-	47, // 3: rewriter.RewriteTableStaticArgs.remote_table_map:type_name -> rewriter.RewriteTableStaticArgs.RemoteTableMapEntry
-	48, // 4: rewriter.RewriteTableStaticArgs.table_with_database_map:type_name -> rewriter.RewriteTableStaticArgs.TableWithDatabaseMapEntry
-	49, // 5: rewriter.RewriteTableDynamicArgs.database_map:type_name -> rewriter.RewriteTableDynamicArgs.DatabaseMapEntry
-	51, // 6: rewriter.RewriteTableDynamicArgs.logical_database_to_remote_upstream_index:type_name -> rewriter.RewriteTableDynamicArgs.LogicalDatabaseToRemoteUpstreamIndexEntry
-	52, // 7: rewriter.RewriteTableDynamicArgs.remote_upstreams:type_name -> rewriter.RewriteTableDynamicArgs.RemoteUpstreamsEntry
-	17, // 8: rewriter.RewriteTableDynamicArgs.storage_integrity:type_name -> rewriter.StorageIntegrityArgs
-	54, // 9: rewriter.StorageIntegrityArgs.tables:type_name -> rewriter.StorageIntegrityArgs.TablesEntry
-	9,  // 10: rewriter.StorageIntegrityArgs.read_mode:type_name -> rewriter.StorageIntegrityArgs.ReadMode
+	42, // 0: rewriter.RewriteLimitArgs.replace_limit:type_name -> rewriter.RewriteLimitArgs.ReplaceLimit
+	44, // 1: rewriter.RewriteCommonTableExprArgs.cte_map:type_name -> rewriter.RewriteCommonTableExprArgs.CteMapEntry
+	47, // 2: rewriter.RewriteTableStaticArgs.table_map:type_name -> rewriter.RewriteTableStaticArgs.TableMapEntry
+	48, // 3: rewriter.RewriteTableStaticArgs.remote_table_map:type_name -> rewriter.RewriteTableStaticArgs.RemoteTableMapEntry
+	49, // 4: rewriter.RewriteTableStaticArgs.table_with_database_map:type_name -> rewriter.RewriteTableStaticArgs.TableWithDatabaseMapEntry
+	50, // 5: rewriter.RewriteTableDynamicArgs.database_map:type_name -> rewriter.RewriteTableDynamicArgs.DatabaseMapEntry
+	52, // 6: rewriter.RewriteTableDynamicArgs.logical_database_to_remote_upstream_index:type_name -> rewriter.RewriteTableDynamicArgs.LogicalDatabaseToRemoteUpstreamIndexEntry
+	53, // 7: rewriter.RewriteTableDynamicArgs.remote_upstreams:type_name -> rewriter.RewriteTableDynamicArgs.RemoteUpstreamsEntry
+	18, // 8: rewriter.RewriteTableDynamicArgs.storage_integrity:type_name -> rewriter.StorageIntegrityArgs
+	55, // 9: rewriter.StorageIntegrityArgs.tables:type_name -> rewriter.StorageIntegrityArgs.TablesEntry
+	10, // 10: rewriter.StorageIntegrityArgs.read_mode:type_name -> rewriter.StorageIntegrityArgs.ReadMode
 	1,  // 11: rewriter.StorageIntegrityArgs.contract_version:type_name -> rewriter.StorageIntegrityContractVersion
-	16, // 12: rewriter.RewriteTableNameArgs.dynamic_args:type_name -> rewriter.RewriteTableDynamicArgs
-	15, // 13: rewriter.RewriteTableNameArgs.static_args:type_name -> rewriter.RewriteTableStaticArgs
-	55, // 14: rewriter.RewriteSettingsArgs.settings:type_name -> rewriter.RewriteSettingsArgs.Setting
+	17, // 12: rewriter.RewriteTableNameArgs.dynamic_args:type_name -> rewriter.RewriteTableDynamicArgs
+	16, // 13: rewriter.RewriteTableNameArgs.static_args:type_name -> rewriter.RewriteTableStaticArgs
+	56, // 14: rewriter.RewriteSettingsArgs.settings:type_name -> rewriter.RewriteSettingsArgs.Setting
 	0,  // 15: rewriter.RewriteOption.op:type_name -> rewriter.RewriteOp
-	18, // 16: rewriter.RewriteOption.table_name_args:type_name -> rewriter.RewriteTableNameArgs
-	12, // 17: rewriter.RewriteOption.limit_args:type_name -> rewriter.RewriteLimitArgs
-	13, // 18: rewriter.RewriteOption.offset_args:type_name -> rewriter.RewriteOffsetArgs
-	19, // 19: rewriter.RewriteOption.settings_args:type_name -> rewriter.RewriteSettingsArgs
-	14, // 20: rewriter.RewriteOption.common_table_expr_args:type_name -> rewriter.RewriteCommonTableExprArgs
-	20, // 21: rewriter.RewriteSQLRequest.options:type_name -> rewriter.RewriteOption
-	24, // 22: rewriter.MaterializeSQLRequest.inputs:type_name -> rewriter.MaterializationInputs
-	23, // 23: rewriter.MaterializeSQLRequest.policy:type_name -> rewriter.MaterializationPolicy
+	19, // 16: rewriter.RewriteOption.table_name_args:type_name -> rewriter.RewriteTableNameArgs
+	13, // 17: rewriter.RewriteOption.limit_args:type_name -> rewriter.RewriteLimitArgs
+	14, // 18: rewriter.RewriteOption.offset_args:type_name -> rewriter.RewriteOffsetArgs
+	20, // 19: rewriter.RewriteOption.settings_args:type_name -> rewriter.RewriteSettingsArgs
+	15, // 20: rewriter.RewriteOption.common_table_expr_args:type_name -> rewriter.RewriteCommonTableExprArgs
+	21, // 21: rewriter.RewriteSQLRequest.options:type_name -> rewriter.RewriteOption
+	25, // 22: rewriter.MaterializeSQLRequest.inputs:type_name -> rewriter.MaterializationInputs
+	24, // 23: rewriter.MaterializeSQLRequest.policy:type_name -> rewriter.MaterializationPolicy
 	3,  // 24: rewriter.MaterializeSQLResponse.code:type_name -> rewriter.MaterializeCode
-	25, // 25: rewriter.MaterializeSQLResponse.replacements:type_name -> rewriter.MaterializedReplacement
+	26, // 25: rewriter.MaterializeSQLResponse.replacements:type_name -> rewriter.MaterializedReplacement
 	4,  // 26: rewriter.RewriteSQLResponse.code:type_name -> rewriter.RewriteCode
 	5,  // 27: rewriter.RewriteSQLResponse.statement_type:type_name -> rewriter.StatementType
-	56, // 28: rewriter.RewriteSQLResponse.table_rewrites:type_name -> rewriter.RewriteSQLResponse.TableRewritesEntry
-	57, // 29: rewriter.RewriteSQLResponse.database_rewrites:type_name -> rewriter.RewriteSQLResponse.DatabaseRewritesEntry
-	28, // 30: rewriter.RewriteSQLResponse.original_accessed_tables:type_name -> rewriter.AccessedTable
-	29, // 31: rewriter.RewriteSQLResponse.privileges_deltas:type_name -> rewriter.PrivilegeDelta
+	57, // 28: rewriter.RewriteSQLResponse.table_rewrites:type_name -> rewriter.RewriteSQLResponse.TableRewritesEntry
+	58, // 29: rewriter.RewriteSQLResponse.database_rewrites:type_name -> rewriter.RewriteSQLResponse.DatabaseRewritesEntry
+	29, // 30: rewriter.RewriteSQLResponse.original_accessed_tables:type_name -> rewriter.AccessedTable
+	30, // 31: rewriter.RewriteSQLResponse.privileges_deltas:type_name -> rewriter.PrivilegeDelta
 	6,  // 32: rewriter.RewriteSQLResponse.existence_clause:type_name -> rewriter.ExistenceClause
 	1,  // 33: rewriter.RewriteSQLResponse.storage_integrity_contract_version:type_name -> rewriter.StorageIntegrityContractVersion
-	10, // 34: rewriter.PrivilegeDelta.action:type_name -> rewriter.PrivilegeDelta.Action
-	11, // 35: rewriter.PrivilegeDelta.scope:type_name -> rewriter.PrivilegeDelta.Scope
-	58, // 36: rewriter.PrivilegeDelta.grantees:type_name -> rewriter.PrivilegeDelta.Grantee
-	30, // 37: rewriter.SnapshotQueryCatalogTable.columns:type_name -> rewriter.SnapshotQueryColumn
-	31, // 38: rewriter.AnalyzeSnapshotQueryRequest.catalog:type_name -> rewriter.SnapshotQueryCatalogTable
-	24, // 39: rewriter.AnalyzeSnapshotQueryRequest.inputs:type_name -> rewriter.MaterializationInputs
-	7,  // 40: rewriter.AnalyzeSnapshotQueryResponse.code:type_name -> rewriter.SnapshotQueryCode
-	32, // 41: rewriter.PrepareSnapshotQueryRequest.analysis:type_name -> rewriter.AnalyzeSnapshotQueryRequest
-	34, // 42: rewriter.PrepareSnapshotQueryRequest.bindings:type_name -> rewriter.SnapshotScratchBinding
-	7,  // 43: rewriter.PrepareSnapshotQueryResponse.code:type_name -> rewriter.SnapshotQueryCode
-	59, // 44: rewriter.OptimizeRequest.table_sizes:type_name -> rewriter.OptimizeRequest.TableSizesEntry
-	8,  // 45: rewriter.OptimizeResponse.code:type_name -> rewriter.OptimizeCode
-	20, // 46: rewriter.RewriteErrorMessageRequest.options:type_name -> rewriter.RewriteOption
-	4,  // 47: rewriter.RewriteErrorMessageResponse.code:type_name -> rewriter.RewriteCode
-	42, // 48: rewriter.RewriteCommonTableExprArgs.CteMapEntry.value:type_name -> rewriter.RewriteCommonTableExprArgs.CommonTableExpr
-	44, // 49: rewriter.RewriteTableStaticArgs.RemoteTableMapEntry.value:type_name -> rewriter.RewriteTableStaticArgs.RemoteTable
-	45, // 50: rewriter.RewriteTableStaticArgs.TableWithDatabaseMapEntry.value:type_name -> rewriter.RewriteTableStaticArgs.TableWithDatabase
-	50, // 51: rewriter.RewriteTableDynamicArgs.RemoteUpstreamsEntry.value:type_name -> rewriter.RewriteTableDynamicArgs.RemoteUpstream
-	53, // 52: rewriter.StorageIntegrityArgs.TablesEntry.value:type_name -> rewriter.StorageIntegrityArgs.Table
-	2,  // 53: rewriter.RewriteSettingsArgs.Setting.type:type_name -> rewriter.SettingType
-	22, // 54: rewriter.RewriterService.MaterializeSQL:input_type -> rewriter.MaterializeSQLRequest
-	21, // 55: rewriter.RewriterService.Rewrite:input_type -> rewriter.RewriteSQLRequest
-	39, // 56: rewriter.RewriterService.RewriteErrorMessage:input_type -> rewriter.RewriteErrorMessageRequest
-	37, // 57: rewriter.RewriterService.Optimize:input_type -> rewriter.OptimizeRequest
-	32, // 58: rewriter.RewriterService.AnalyzeSnapshotQuery:input_type -> rewriter.AnalyzeSnapshotQueryRequest
-	35, // 59: rewriter.RewriterService.PrepareSnapshotQuery:input_type -> rewriter.PrepareSnapshotQueryRequest
-	26, // 60: rewriter.RewriterService.MaterializeSQL:output_type -> rewriter.MaterializeSQLResponse
-	27, // 61: rewriter.RewriterService.Rewrite:output_type -> rewriter.RewriteSQLResponse
-	40, // 62: rewriter.RewriterService.RewriteErrorMessage:output_type -> rewriter.RewriteErrorMessageResponse
-	38, // 63: rewriter.RewriterService.Optimize:output_type -> rewriter.OptimizeResponse
-	33, // 64: rewriter.RewriterService.AnalyzeSnapshotQuery:output_type -> rewriter.AnalyzeSnapshotQueryResponse
-	36, // 65: rewriter.RewriterService.PrepareSnapshotQuery:output_type -> rewriter.PrepareSnapshotQueryResponse
-	60, // [60:66] is the sub-list for method output_type
-	54, // [54:60] is the sub-list for method input_type
-	54, // [54:54] is the sub-list for extension type_name
-	54, // [54:54] is the sub-list for extension extendee
-	0,  // [0:54] is the sub-list for field type_name
+	11, // 34: rewriter.PrivilegeDelta.action:type_name -> rewriter.PrivilegeDelta.Action
+	12, // 35: rewriter.PrivilegeDelta.scope:type_name -> rewriter.PrivilegeDelta.Scope
+	59, // 36: rewriter.PrivilegeDelta.grantees:type_name -> rewriter.PrivilegeDelta.Grantee
+	9,  // 37: rewriter.SnapshotQueryColumn.generation:type_name -> rewriter.SnapshotQueryColumnGeneration
+	31, // 38: rewriter.SnapshotQueryCatalogTable.columns:type_name -> rewriter.SnapshotQueryColumn
+	32, // 39: rewriter.AnalyzeSnapshotQueryRequest.catalog:type_name -> rewriter.SnapshotQueryCatalogTable
+	25, // 40: rewriter.AnalyzeSnapshotQueryRequest.inputs:type_name -> rewriter.MaterializationInputs
+	7,  // 41: rewriter.AnalyzeSnapshotQueryResponse.code:type_name -> rewriter.SnapshotQueryCode
+	33, // 42: rewriter.PrepareSnapshotQueryRequest.analysis:type_name -> rewriter.AnalyzeSnapshotQueryRequest
+	35, // 43: rewriter.PrepareSnapshotQueryRequest.bindings:type_name -> rewriter.SnapshotScratchBinding
+	7,  // 44: rewriter.PrepareSnapshotQueryResponse.code:type_name -> rewriter.SnapshotQueryCode
+	60, // 45: rewriter.OptimizeRequest.table_sizes:type_name -> rewriter.OptimizeRequest.TableSizesEntry
+	8,  // 46: rewriter.OptimizeResponse.code:type_name -> rewriter.OptimizeCode
+	21, // 47: rewriter.RewriteErrorMessageRequest.options:type_name -> rewriter.RewriteOption
+	4,  // 48: rewriter.RewriteErrorMessageResponse.code:type_name -> rewriter.RewriteCode
+	43, // 49: rewriter.RewriteCommonTableExprArgs.CteMapEntry.value:type_name -> rewriter.RewriteCommonTableExprArgs.CommonTableExpr
+	45, // 50: rewriter.RewriteTableStaticArgs.RemoteTableMapEntry.value:type_name -> rewriter.RewriteTableStaticArgs.RemoteTable
+	46, // 51: rewriter.RewriteTableStaticArgs.TableWithDatabaseMapEntry.value:type_name -> rewriter.RewriteTableStaticArgs.TableWithDatabase
+	51, // 52: rewriter.RewriteTableDynamicArgs.RemoteUpstreamsEntry.value:type_name -> rewriter.RewriteTableDynamicArgs.RemoteUpstream
+	54, // 53: rewriter.StorageIntegrityArgs.TablesEntry.value:type_name -> rewriter.StorageIntegrityArgs.Table
+	2,  // 54: rewriter.RewriteSettingsArgs.Setting.type:type_name -> rewriter.SettingType
+	23, // 55: rewriter.RewriterService.MaterializeSQL:input_type -> rewriter.MaterializeSQLRequest
+	22, // 56: rewriter.RewriterService.Rewrite:input_type -> rewriter.RewriteSQLRequest
+	40, // 57: rewriter.RewriterService.RewriteErrorMessage:input_type -> rewriter.RewriteErrorMessageRequest
+	38, // 58: rewriter.RewriterService.Optimize:input_type -> rewriter.OptimizeRequest
+	33, // 59: rewriter.RewriterService.AnalyzeSnapshotQuery:input_type -> rewriter.AnalyzeSnapshotQueryRequest
+	36, // 60: rewriter.RewriterService.PrepareSnapshotQuery:input_type -> rewriter.PrepareSnapshotQueryRequest
+	27, // 61: rewriter.RewriterService.MaterializeSQL:output_type -> rewriter.MaterializeSQLResponse
+	28, // 62: rewriter.RewriterService.Rewrite:output_type -> rewriter.RewriteSQLResponse
+	41, // 63: rewriter.RewriterService.RewriteErrorMessage:output_type -> rewriter.RewriteErrorMessageResponse
+	39, // 64: rewriter.RewriterService.Optimize:output_type -> rewriter.OptimizeResponse
+	34, // 65: rewriter.RewriterService.AnalyzeSnapshotQuery:output_type -> rewriter.AnalyzeSnapshotQueryResponse
+	37, // 66: rewriter.RewriterService.PrepareSnapshotQuery:output_type -> rewriter.PrepareSnapshotQueryResponse
+	61, // [61:67] is the sub-list for method output_type
+	55, // [55:61] is the sub-list for method input_type
+	55, // [55:55] is the sub-list for extension type_name
+	55, // [55:55] is the sub-list for extension extendee
+	0,  // [0:55] is the sub-list for field type_name
 }
 
 func init() { file_rewriter_proto_init() }
@@ -4547,7 +4653,7 @@ func file_rewriter_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_rewriter_proto_rawDesc), len(file_rewriter_proto_rawDesc)),
-			NumEnums:      12,
+			NumEnums:      13,
 			NumMessages:   48,
 			NumExtensions: 0,
 			NumServices:   1,

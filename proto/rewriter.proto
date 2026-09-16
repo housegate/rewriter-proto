@@ -938,14 +938,27 @@ enum SnapshotQueryCode {
 }
 
 // One authenticated column in SnapshotQueryCatalogTable.columns. Entries are
-// ordered exactly as the table schema, not in an INSERT target-list order.
+// ordered exactly as the table schema, not in an INSERT target-list order. The
+// initial profile captures all declared user columns before eligibility checks:
+// every target column and every column of each actually referenced read table
+// must be eligible. An unrelated untouched table in the complete manifest does
+// not invalidate a query by itself.
 message SnapshotQueryColumn {
     string name = 1;
     string type = 2;
+    SnapshotQueryColumnGeneration generation = 3;
+    // ClickHouse DEFAULT/MATERIALIZED/ALIAS expression text when present.
+    // Initial-profile ORDINARY columns require this to be empty.
+    string default_expression = 4;
 }
 
 // Authenticated schema metadata supplied by the caller for a table visible to
-// analysis. The catalog cannot be used to invent or activate a query profile.
+// analysis. The catalog must be projected from an authenticated exact-snapshot
+// semantic artifact. Legacy name/type schema hashes, arbitrary labels, or live
+// metadata alone do not authenticate generation/default-expression semantics,
+// and the catalog cannot invent or activate a query profile. Verification of
+// that artifact/authority path is outside these protobuf declarations. These
+// added fields do not alter any legacy payload or legacy schema hash.
 message SnapshotQueryCatalogTable {
     string database = 1;
     string table = 2;
@@ -1118,4 +1131,21 @@ message RewriteErrorMessageResponse {
     RewriteCode code = 1;
     string message = 2;
     string error_after_rewrite = 3;
+}
+
+// How ClickHouse generates a declared column value. The initial snapshot-query
+// profile admits only an explicit SNAPSHOT_QUERY_COLUMN_GENERATION_ORDINARY
+// value with an empty default_expression. UNSPECIFIED (including metadata
+// omitted by an old client), unknown numeric values, OTHER, DEFAULT (including
+// a constant default), MATERIALIZED, ALIAS, and ORDINARY with a non-empty
+// default_expression are ineligible and must be refused by the future handler.
+// Unknown numeric values remain transportable protobuf values; transportability
+// is not runtime admission.
+enum SnapshotQueryColumnGeneration {
+    SNAPSHOT_QUERY_COLUMN_GENERATION_UNSPECIFIED = 0;
+    SNAPSHOT_QUERY_COLUMN_GENERATION_ORDINARY = 1;
+    SNAPSHOT_QUERY_COLUMN_GENERATION_DEFAULT = 2;
+    SNAPSHOT_QUERY_COLUMN_GENERATION_MATERIALIZED = 3;
+    SNAPSHOT_QUERY_COLUMN_GENERATION_ALIAS = 4;
+    SNAPSHOT_QUERY_COLUMN_GENERATION_OTHER = 5;
 }
