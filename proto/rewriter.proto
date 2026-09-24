@@ -259,8 +259,10 @@ message RewriteTableDynamicArgs {
     // map that picks an entry here.
     map<string, RemoteUpstream> remote_upstreams = 8;
 
-    // Storage-integrity read surface (housegate Spec G). When present and
-    // `tables` is non-empty, every SELECT-family table reference whose
+    // Storage-integrity read surface (housegate Spec G). The surface is
+    // active when contract_version is V1 and `tables` is non-empty, or when
+    // contract_version is V2 (even with an empty `tables` map). While it is
+    // active, every SELECT-family table reference whose
     // logical key (`<db>.<table>`, db resolved from the SQL qualifier or
     // upstream_logical_database_in_context) is in `tables` is rewritten to a
     // derived table over the safe/unsafe physical tables INSTEAD of the
@@ -268,11 +270,14 @@ message RewriteTableDynamicArgs {
     // system.columns SELECT that hides reserved_row_id_column; every other
     // statement touching such a table (ALTER/DROP/TRUNCATE/RENAME/EXCHANGE/
     // OPTIMIZE/CREATE/GRANT/REVOKE/SHOW CREATE) rejects with
-    // UnsupportedStatement. INSERT is deliberately NOT rejected here (the
-    // caller's signed ingress owns that decision); it is rewritten through
-    // the ordinary path and reported with AccessedTable.is_storage_integrity.
-    // Any user identifier equal to reserved_row_id_column in a statement
-    // touching an SI table rejects with RewriteError.
+    // UnsupportedStatement, except that V2 accepts DROP TABLE (see
+    // StorageIntegrityContractVersion). INSERT is deliberately NOT rejected
+    // here (the caller's signed ingress owns that decision); it is rewritten
+    // through the ordinary path and reported with
+    // AccessedTable.is_storage_integrity. Any user identifier equal to
+    // reserved_row_id_column in a statement touching an SI table rejects with
+    // RewriteError. Statement classes no handler models are refused while the
+    // surface is active.
     StorageIntegrityArgs storage_integrity = 12;
 }
 
@@ -281,7 +286,25 @@ message RewriteTableDynamicArgs {
 // can ignore them and still return RewriteCode=Success.
 enum StorageIntegrityContractVersion {
     STORAGE_INTEGRITY_CONTRACT_UNSPECIFIED = 0;
+    // Static table set (Spec G/I). Active only when
+    // StorageIntegrityArgs.tables is non-empty. Every non-INSERT DDL, DML or
+    // DCL statement that targets an SI table is rejected, including
+    // DROP TABLE.
     STORAGE_INTEGRITY_CONTRACT_V1 = 1;
+    // Dynamic table set (housegate sub-project 3). Identical to V1 except:
+    //   * the SI surface is active whenever V2 is sent, even with an empty
+    //     `tables` map, so session SET, SYSTEM and unmodelled statements stay
+    //     refused while no table is active;
+    //   * DROP TABLE [IF EXISTS] of logical SI tables (optionally SYNC, and
+    //     with several targets that may mix SI and ordinary tables) succeeds.
+    //     Each SI target is rewritten to the ordinary physical table that
+    //     database_map gives it; the safe/unsafe tables are untouched, and the
+    //     target stays in original_accessed_tables with is_storage_integrity.
+    //     A physical safe/unsafe target, ON CLUSTER, TRUNCATE, DROP VIEW and
+    //     DROP DICTIONARY of an SI table are still rejected;
+    //   * StorageIntegrityArgs.reserved_databases joins the protected physical
+    //     namespace, which V1 derives from `tables` alone.
+    STORAGE_INTEGRITY_CONTRACT_V2 = 2;
 }
 
 // Per-request storage-integrity surface description. See
@@ -303,9 +326,18 @@ message StorageIntegrityArgs {
     ReadMode read_mode = 2;
     // Reserved per-row identity column; "" means "_hg_row_id".
     string reserved_row_id_column = 3;
-    // Required to be V1 when tables is non-empty. Backends acknowledge an
-    // accepted version on every response path; see the top-level enum.
+    // Required to be V1 or V2 when tables is non-empty; V2 also activates the
+    // surface with an empty `tables` map. Backends acknowledge the accepted
+    // version on every response path; see the top-level enum.
     StorageIntegrityContractVersion contract_version = 4;
+    // Protocol-owned physical databases (for example "hg_safe", "hg_unsafe",
+    // "hg_promote") that user SQL may never address directly. Read only under
+    // contract V2, where the protected namespace is the union of these names
+    // and the databases of every safe_table / unsafe_table in `tables`, so it
+    // stays protected when `tables` is empty. Each entry must be a non-empty
+    // simple identifier. V1 ignores the field and derives the protected set
+    // from `tables` alone.
+    repeated string reserved_databases = 5;
 }
 
 // Selects which mode (above) applies to this rewrite.
@@ -736,9 +768,10 @@ message RewriteSQLResponse {
     // (non-Success) response; only SyntaxError leaves it UNSPECIFIED.
     ExistenceClause existence_clause = 14;
 
-    // Echoed as V1 on every response path only after the backend accepted an
-    // SI request whose StorageIntegrityArgs.tables is non-empty and whose
-    // contract_version is V1. Zero for non-SI or unsupported-version calls.
+    // Echoes the accepted StorageIntegrityArgs.contract_version on every
+    // response path: V1 after the backend accepted a V1 request whose
+    // `tables` is non-empty, V2 after it accepted any V2 request. Zero for
+    // non-SI, inactive (V1 with empty `tables`) or unsupported-version calls.
     StorageIntegrityContractVersion storage_integrity_contract_version = 16;
 }
 

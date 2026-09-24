@@ -109,7 +109,25 @@ type StorageIntegrityContractVersion int32
 
 const (
 	StorageIntegrityContractVersion_STORAGE_INTEGRITY_CONTRACT_UNSPECIFIED StorageIntegrityContractVersion = 0
-	StorageIntegrityContractVersion_STORAGE_INTEGRITY_CONTRACT_V1          StorageIntegrityContractVersion = 1
+	// Static table set (Spec G/I). Active only when
+	// StorageIntegrityArgs.tables is non-empty. Every non-INSERT DDL, DML or
+	// DCL statement that targets an SI table is rejected, including
+	// DROP TABLE.
+	StorageIntegrityContractVersion_STORAGE_INTEGRITY_CONTRACT_V1 StorageIntegrityContractVersion = 1
+	// Dynamic table set (housegate sub-project 3). Identical to V1 except:
+	//   - the SI surface is active whenever V2 is sent, even with an empty
+	//     `tables` map, so session SET, SYSTEM and unmodelled statements stay
+	//     refused while no table is active;
+	//   - DROP TABLE [IF EXISTS] of logical SI tables (optionally SYNC, and
+	//     with several targets that may mix SI and ordinary tables) succeeds.
+	//     Each SI target is rewritten to the ordinary physical table that
+	//     database_map gives it; the safe/unsafe tables are untouched, and the
+	//     target stays in original_accessed_tables with is_storage_integrity.
+	//     A physical safe/unsafe target, ON CLUSTER, TRUNCATE, DROP VIEW and
+	//     DROP DICTIONARY of an SI table are still rejected;
+	//   - StorageIntegrityArgs.reserved_databases joins the protected physical
+	//     namespace, which V1 derives from `tables` alone.
+	StorageIntegrityContractVersion_STORAGE_INTEGRITY_CONTRACT_V2 StorageIntegrityContractVersion = 2
 )
 
 // Enum value maps for StorageIntegrityContractVersion.
@@ -117,10 +135,12 @@ var (
 	StorageIntegrityContractVersion_name = map[int32]string{
 		0: "STORAGE_INTEGRITY_CONTRACT_UNSPECIFIED",
 		1: "STORAGE_INTEGRITY_CONTRACT_V1",
+		2: "STORAGE_INTEGRITY_CONTRACT_V2",
 	}
 	StorageIntegrityContractVersion_value = map[string]int32{
 		"STORAGE_INTEGRITY_CONTRACT_UNSPECIFIED": 0,
 		"STORAGE_INTEGRITY_CONTRACT_V1":          1,
+		"STORAGE_INTEGRITY_CONTRACT_V2":          2,
 	}
 )
 
@@ -1334,8 +1354,10 @@ type RewriteTableDynamicArgs struct {
 	// and `logical_database_to_remote_upstream_index` for the routing
 	// map that picks an entry here.
 	RemoteUpstreams map[string]*RewriteTableDynamicArgs_RemoteUpstream `protobuf:"bytes,8,rep,name=remote_upstreams,json=remoteUpstreams,proto3" json:"remote_upstreams,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	// Storage-integrity read surface (housegate Spec G). When present and
-	// `tables` is non-empty, every SELECT-family table reference whose
+	// Storage-integrity read surface (housegate Spec G). The surface is
+	// active when contract_version is V1 and `tables` is non-empty, or when
+	// contract_version is V2 (even with an empty `tables` map). While it is
+	// active, every SELECT-family table reference whose
 	// logical key (`<db>.<table>`, db resolved from the SQL qualifier or
 	// upstream_logical_database_in_context) is in `tables` is rewritten to a
 	// derived table over the safe/unsafe physical tables INSTEAD of the
@@ -1343,11 +1365,14 @@ type RewriteTableDynamicArgs struct {
 	// system.columns SELECT that hides reserved_row_id_column; every other
 	// statement touching such a table (ALTER/DROP/TRUNCATE/RENAME/EXCHANGE/
 	// OPTIMIZE/CREATE/GRANT/REVOKE/SHOW CREATE) rejects with
-	// UnsupportedStatement. INSERT is deliberately NOT rejected here (the
-	// caller's signed ingress owns that decision); it is rewritten through
-	// the ordinary path and reported with AccessedTable.is_storage_integrity.
-	// Any user identifier equal to reserved_row_id_column in a statement
-	// touching an SI table rejects with RewriteError.
+	// UnsupportedStatement, except that V2 accepts DROP TABLE (see
+	// StorageIntegrityContractVersion). INSERT is deliberately NOT rejected
+	// here (the caller's signed ingress owns that decision); it is rewritten
+	// through the ordinary path and reported with
+	// AccessedTable.is_storage_integrity. Any user identifier equal to
+	// reserved_row_id_column in a statement touching an SI table rejects with
+	// RewriteError. Statement classes no handler models are refused while the
+	// surface is active.
 	StorageIntegrity *StorageIntegrityArgs `protobuf:"bytes,12,opt,name=storage_integrity,json=storageIntegrity,proto3" json:"storage_integrity,omitempty"`
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
@@ -1456,11 +1481,20 @@ type StorageIntegrityArgs struct {
 	ReadMode StorageIntegrityArgs_ReadMode          `protobuf:"varint,2,opt,name=read_mode,json=readMode,proto3,enum=rewriter.StorageIntegrityArgs_ReadMode" json:"read_mode,omitempty"`
 	// Reserved per-row identity column; "" means "_hg_row_id".
 	ReservedRowIdColumn string `protobuf:"bytes,3,opt,name=reserved_row_id_column,json=reservedRowIdColumn,proto3" json:"reserved_row_id_column,omitempty"`
-	// Required to be V1 when tables is non-empty. Backends acknowledge an
-	// accepted version on every response path; see the top-level enum.
+	// Required to be V1 or V2 when tables is non-empty; V2 also activates the
+	// surface with an empty `tables` map. Backends acknowledge the accepted
+	// version on every response path; see the top-level enum.
 	ContractVersion StorageIntegrityContractVersion `protobuf:"varint,4,opt,name=contract_version,json=contractVersion,proto3,enum=rewriter.StorageIntegrityContractVersion" json:"contract_version,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// Protocol-owned physical databases (for example "hg_safe", "hg_unsafe",
+	// "hg_promote") that user SQL may never address directly. Read only under
+	// contract V2, where the protected namespace is the union of these names
+	// and the databases of every safe_table / unsafe_table in `tables`, so it
+	// stays protected when `tables` is empty. Each entry must be a non-empty
+	// simple identifier. V1 ignores the field and derives the protected set
+	// from `tables` alone.
+	ReservedDatabases []string `protobuf:"bytes,5,rep,name=reserved_databases,json=reservedDatabases,proto3" json:"reserved_databases,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *StorageIntegrityArgs) Reset() {
@@ -1519,6 +1553,13 @@ func (x *StorageIntegrityArgs) GetContractVersion() StorageIntegrityContractVers
 		return x.ContractVersion
 	}
 	return StorageIntegrityContractVersion_STORAGE_INTEGRITY_CONTRACT_UNSPECIFIED
+}
+
+func (x *StorageIntegrityArgs) GetReservedDatabases() []string {
+	if x != nil {
+		return x.ReservedDatabases
+	}
+	return nil
 }
 
 // Selects which mode (above) applies to this rewrite.
@@ -2289,9 +2330,10 @@ type RewriteSQLResponse struct {
 	// Set as soon as the SQL parses, so it is accurate even on a rejected
 	// (non-Success) response; only SyntaxError leaves it UNSPECIFIED.
 	ExistenceClause ExistenceClause `protobuf:"varint,14,opt,name=existence_clause,json=existenceClause,proto3,enum=rewriter.ExistenceClause" json:"existence_clause,omitempty"`
-	// Echoed as V1 on every response path only after the backend accepted an
-	// SI request whose StorageIntegrityArgs.tables is non-empty and whose
-	// contract_version is V1. Zero for non-SI or unsupported-version calls.
+	// Echoes the accepted StorageIntegrityArgs.contract_version on every
+	// response path: V1 after the backend accepted a V1 request whose
+	// `tables` is non-empty, V2 after it accepted any V2 request. Zero for
+	// non-SI, inactive (V1 with empty `tables`) or unsupported-version calls.
 	StorageIntegrityContractVersion StorageIntegrityContractVersion `protobuf:"varint,16,opt,name=storage_integrity_contract_version,json=storageIntegrityContractVersion,proto3,enum=rewriter.StorageIntegrityContractVersion" json:"storage_integrity_contract_version,omitempty"`
 	unknownFields                   protoimpl.UnknownFields
 	sizeCache                       protoimpl.SizeCache
@@ -4186,12 +4228,13 @@ const file_rewriter_proto_rawDesc = "" +
 	"\x14RemoteUpstreamsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12F\n" +
 	"\x05value\x18\x02 \x01(\v20.rewriter.RewriteTableDynamicArgs.RemoteUpstreamR\x05value:\x028\x01B(\n" +
-	"&_upstream_physical_database_in_context\"\xe3\x04\n" +
+	"&_upstream_physical_database_in_context\"\x92\x05\n" +
 	"\x14StorageIntegrityArgs\x12B\n" +
 	"\x06tables\x18\x01 \x03(\v2*.rewriter.StorageIntegrityArgs.TablesEntryR\x06tables\x12D\n" +
 	"\tread_mode\x18\x02 \x01(\x0e2'.rewriter.StorageIntegrityArgs.ReadModeR\breadMode\x123\n" +
 	"\x16reserved_row_id_column\x18\x03 \x01(\tR\x13reservedRowIdColumn\x12T\n" +
-	"\x10contract_version\x18\x04 \x01(\x0e2).rewriter.StorageIntegrityContractVersionR\x0fcontractVersion\x1a}\n" +
+	"\x10contract_version\x18\x04 \x01(\x0e2).rewriter.StorageIntegrityContractVersionR\x0fcontractVersion\x12-\n" +
+	"\x12reserved_databases\x18\x05 \x03(\tR\x11reservedDatabases\x1a}\n" +
 	"\x05Table\x12\x1d\n" +
 	"\n" +
 	"safe_table\x18\x01 \x01(\tR\tsafeTable\x12!\n" +
@@ -4390,10 +4433,11 @@ const file_rewriter_proto_rawDesc = "" +
 	"\fLimitRewrite\x10\x01\x12\x11\n" +
 	"\rOffsetRewrite\x10\x02\x12\x13\n" +
 	"\x0fSettingsRewrite\x10\x03\x12\x1a\n" +
-	"\x16CommonTableExprRewrite\x10\x04\"\x04\b\x05\x10\x05*\x0fJoinSwapRewrite*p\n" +
+	"\x16CommonTableExprRewrite\x10\x04\"\x04\b\x05\x10\x05*\x0fJoinSwapRewrite*\x93\x01\n" +
 	"\x1fStorageIntegrityContractVersion\x12*\n" +
 	"&STORAGE_INTEGRITY_CONTRACT_UNSPECIFIED\x10\x00\x12!\n" +
-	"\x1dSTORAGE_INTEGRITY_CONTRACT_V1\x10\x01*8\n" +
+	"\x1dSTORAGE_INTEGRITY_CONTRACT_V1\x10\x01\x12!\n" +
+	"\x1dSTORAGE_INTEGRITY_CONTRACT_V2\x10\x02*8\n" +
 	"\vSettingType\x12\n" +
 	"\n" +
 	"\x06String\x10\x00\x12\b\n" +
