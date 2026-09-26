@@ -194,7 +194,8 @@ message RewriteTableDynamicArgs {
     // verbatim (no logical→physical translation). A `logical` that's in
     // this list resolves to itself as `physical`. Used so callers can let
     // through "system" / shared schemas without listing them in
-    // `database_map`.
+    // `database_map`. A name that also appears in protected_databases is
+    // protected, not passed through.
     repeated string known_physical_databases = 2;
     // Default logical DB for unqualified targets in the SQL — typically
     // tracked via the user's most recent `USE <db>` issued through this
@@ -258,6 +259,16 @@ message RewriteTableDynamicArgs {
     // and `logical_database_to_remote_upstream_index` for the routing
     // map that picks an entry here.
     map<string, RemoteUpstream> remote_upstreams = 8;
+
+    // Physical databases that caller SQL may never name in any position —
+    // as a qualifier, a USE / SHOW … FROM target, a table-function or
+    // table-engine argument, or a string-form lookup argument — whatever the
+    // storage-integrity contract says. Housegate sends its shared physical
+    // database plus the protocol-owned hg_* databases on every request. Each
+    // entry must be a simple identifier. A name present here and in
+    // `known_physical_databases` is protected: the pass-through role does not
+    // apply to it. The engines add every value of `database_map` to this set.
+    repeated string protected_databases = 9;
 
     // Storage-integrity read surface (housegate Spec G). The surface is
     // active when contract_version is V1 and `tables` is non-empty, or when
@@ -496,8 +507,8 @@ enum RewriteCode {
     // to RewriteError when the classification truly isn't clear.
     RewriteError = 2;
     // The SQL is valid but the rewriter does not support this statement
-    // kind or variant. Callers may choose to pass the SQL through to
-    // ClickHouse unchanged (it'll either run or ClickHouse will reject it).
+    // kind or variant. Housegate refuses the statement; the code
+    // distinguishes "not modelled" from "invalid" for logs and tests.
     // Cases:
     //   * Statement-kind level: CREATE VIEW, CREATE DICTIONARY,
     //     CREATE TABLE AS table_function(...), DROP DATABASE,
@@ -723,6 +734,9 @@ message RewriteSQLResponse {
     //   * SELECT — one entry per ASTTableExpression, including CTE bodies;
     //     CTE alias entries are replaced by the tables their bodies
     //     reference.
+    //   * IN / GLOBAL IN table operands, the SELECT body of INSERT … SELECT
+    //     and of CREATE TABLE … AS SELECT — one entry per source table,
+    //     listed after the statement's own target(s).
     //   * Non-SELECT single-target handlers (writes / EXISTS / SHOW
     //     CREATE / RENAME) — one entry per (db, table) target processed.
     //     RENAME records both `from` and `to`; `CREATE TABLE AS source`

@@ -290,8 +290,8 @@ const (
 	// to RewriteError when the classification truly isn't clear.
 	RewriteCode_RewriteError RewriteCode = 2
 	// The SQL is valid but the rewriter does not support this statement
-	// kind or variant. Callers may choose to pass the SQL through to
-	// ClickHouse unchanged (it'll either run or ClickHouse will reject it).
+	// kind or variant. Housegate refuses the statement; the code
+	// distinguishes "not modelled" from "invalid" for logs and tests.
 	// Cases:
 	//   - Statement-kind level: CREATE VIEW, CREATE DICTIONARY,
 	//     CREATE TABLE AS table_function(...), DROP DATABASE,
@@ -1302,7 +1302,8 @@ type RewriteTableDynamicArgs struct {
 	// verbatim (no logical→physical translation). A `logical` that's in
 	// this list resolves to itself as `physical`. Used so callers can let
 	// through "system" / shared schemas without listing them in
-	// `database_map`.
+	// `database_map`. A name that also appears in protected_databases is
+	// protected, not passed through.
 	KnownPhysicalDatabases []string `protobuf:"bytes,2,rep,name=known_physical_databases,json=knownPhysicalDatabases,proto3" json:"known_physical_databases,omitempty"`
 	// Default logical DB for unqualified targets in the SQL — typically
 	// tracked via the user's most recent `USE <db>` issued through this
@@ -1354,6 +1355,15 @@ type RewriteTableDynamicArgs struct {
 	// and `logical_database_to_remote_upstream_index` for the routing
 	// map that picks an entry here.
 	RemoteUpstreams map[string]*RewriteTableDynamicArgs_RemoteUpstream `protobuf:"bytes,8,rep,name=remote_upstreams,json=remoteUpstreams,proto3" json:"remote_upstreams,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// Physical databases that caller SQL may never name in any position —
+	// as a qualifier, a USE / SHOW … FROM target, a table-function or
+	// table-engine argument, or a string-form lookup argument — whatever the
+	// storage-integrity contract says. Housegate sends its shared physical
+	// database plus the protocol-owned hg_* databases on every request. Each
+	// entry must be a simple identifier. A name present here and in
+	// `known_physical_databases` is protected: the pass-through role does not
+	// apply to it. The engines add every value of `database_map` to this set.
+	ProtectedDatabases []string `protobuf:"bytes,9,rep,name=protected_databases,json=protectedDatabases,proto3" json:"protected_databases,omitempty"`
 	// Storage-integrity read surface (housegate Spec G). The surface is
 	// active when contract_version is V1 and `tables` is non-empty, or when
 	// contract_version is V2 (even with an empty `tables` map). While it is
@@ -1460,6 +1470,13 @@ func (x *RewriteTableDynamicArgs) GetLogicalDatabaseToRemoteUpstreamIndex() map[
 func (x *RewriteTableDynamicArgs) GetRemoteUpstreams() map[string]*RewriteTableDynamicArgs_RemoteUpstream {
 	if x != nil {
 		return x.RemoteUpstreams
+	}
+	return nil
+}
+
+func (x *RewriteTableDynamicArgs) GetProtectedDatabases() []string {
+	if x != nil {
+		return x.ProtectedDatabases
 	}
 	return nil
 }
@@ -2288,6 +2305,9 @@ type RewriteSQLResponse struct {
 	//   - SELECT — one entry per ASTTableExpression, including CTE bodies;
 	//     CTE alias entries are replaced by the tables their bodies
 	//     reference.
+	//   - IN / GLOBAL IN table operands, the SELECT body of INSERT … SELECT
+	//     and of CREATE TABLE … AS SELECT — one entry per source table,
+	//     listed after the statement's own target(s).
 	//   - Non-SELECT single-target handlers (writes / EXISTS / SHOW
 	//     CREATE / RENAME) — one entry per (db, table) target processed.
 	//     RENAME records both `from` and `to`; `CREATE TABLE AS source`
@@ -4204,7 +4224,7 @@ const file_rewriter_proto_rawDesc = "" +
 	"\x05value\x18\x02 \x01(\v2,.rewriter.RewriteTableStaticArgs.RemoteTableR\x05value:\x028\x01\x1a{\n" +
 	"\x19TableWithDatabaseMapEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12H\n" +
-	"\x05value\x18\x02 \x01(\v22.rewriter.RewriteTableStaticArgs.TableWithDatabaseR\x05value:\x028\x01\"\xf6\b\n" +
+	"\x05value\x18\x02 \x01(\v22.rewriter.RewriteTableStaticArgs.TableWithDatabaseR\x05value:\x028\x01\"\xa7\t\n" +
 	"\x17RewriteTableDynamicArgs\x12U\n" +
 	"\fdatabase_map\x18\x01 \x03(\v22.rewriter.RewriteTableDynamicArgs.DatabaseMapEntryR\vdatabaseMap\x128\n" +
 	"\x18known_physical_databases\x18\x02 \x03(\tR\x16knownPhysicalDatabases\x12N\n" +
@@ -4213,7 +4233,8 @@ const file_rewriter_proto_rawDesc = "" +
 	"\x0fextra_arguments\x18\x05 \x03(\tR\x0eextraArguments\x12U\n" +
 	"%upstream_physical_database_in_context\x18\x06 \x01(\tH\x00R!upstreamPhysicalDatabaseInContext\x88\x01\x01\x12\xa4\x01\n" +
 	")logical_database_to_remote_upstream_index\x18\a \x03(\v2K.rewriter.RewriteTableDynamicArgs.LogicalDatabaseToRemoteUpstreamIndexEntryR$logicalDatabaseToRemoteUpstreamIndex\x12a\n" +
-	"\x10remote_upstreams\x18\b \x03(\v26.rewriter.RewriteTableDynamicArgs.RemoteUpstreamsEntryR\x0fremoteUpstreams\x12K\n" +
+	"\x10remote_upstreams\x18\b \x03(\v26.rewriter.RewriteTableDynamicArgs.RemoteUpstreamsEntryR\x0fremoteUpstreams\x12/\n" +
+	"\x13protected_databases\x18\t \x03(\tR\x12protectedDatabases\x12K\n" +
 	"\x11storage_integrity\x18\f \x01(\v2\x1e.rewriter.StorageIntegrityArgsR\x10storageIntegrity\x1a>\n" +
 	"\x10DatabaseMapEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
