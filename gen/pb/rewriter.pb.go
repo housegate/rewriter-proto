@@ -2307,7 +2307,11 @@ type RewriteSQLResponse struct {
 	//     reference.
 	//   - IN / GLOBAL IN table operands, the SELECT body of INSERT … SELECT
 	//     and of CREATE TABLE … AS SELECT — one entry per source table,
-	//     listed after the statement's own target(s).
+	//     listed after the statement's own target(s). Within each response
+	//     the entries that are not a write target are key-sorted by
+	//     (original_database, original_table) as written — the order both
+	//     engines' map-backed collectors produce — not statement order; a
+	//     SELECT-family statement has no target, so its whole list is sorted.
 	//   - Non-SELECT single-target handlers (writes / EXISTS / SHOW
 	//     CREATE / RENAME) — one entry per (db, table) target processed.
 	//     RENAME records both `from` and `to`; `CREATE TABLE AS source`
