@@ -434,21 +434,28 @@ message RewriteSQLRequest {
     // A refusal has code UnsupportedStatement and message
     // "metadata access is disabled". Refused:
     //   * a reference to the `system` or `information_schema` database
-    //     (compared case-insensitively) as a table, a write / DDL / RENAME /
-    //     ALTER target or source, a USE target, or a SHOW COLUMNS / INDEX
-    //     target;
-    //   * SHOW TABLES and SHOW DATABASES;
-    //   * a table function that can reach those databases (`remote`,
-    //     `remoteSecure`, `cluster`, `clusterAllReplicas`, `merge`, `loop`,
-    //     `mergeTreeIndex`, `mergeTreeProjection`, `mergeTreeTextIndex`,
-    //     `mergeTreeAnalyzeIndexes`) unless its database argument is a static
-    //     name outside them;
-    //   * a string lookup naming them (`dictGet*`, `joinGet*`,
-    //     `hasColumnInTable`);
+    //     (compared case-insensitively) as a table, an IN operand, a write /
+    //     DDL / RENAME / ALTER target or source, a USE or `… DATABASE`
+    //     target, or a SHOW COLUMNS / INDEX / CREATE target;
+    //   * every SHOW form backed by a system table or access storage (SHOW
+    //     TABLES / DATABASES / DICTIONARIES / CLUSTERS / SETTINGS / MERGES /
+    //     PROCESSLIST / USERS / ROLES / QUOTAS / GRANTS / ACCESS / FUNCTIONS
+    //     / ENGINES / SETTING / PRIVILEGES, SHOW CREATE USER / ROLE / …),
+    //     and DESCRIBE FILESYSTEM CACHE;
+    //   * a table function or table engine that can reach those databases
+    //     (`remote`, `remoteSecure`, `cluster`, `clusterAllReplicas`,
+    //     `merge`, `loop`, `mergeTree*`, `Distributed`, `Buffer`, and the
+    //     loopback connectors `mysql`, `postgresql`, `mongodb`, `jdbc`,
+    //     `odbc`) unless its database argument is a static name outside them;
+    //   * a string lookup naming them, or whose name is not static
+    //     (`dictGet*` and the other dictionary functions, `joinGet*`,
+    //     `naiveBayesClassifier*`, `hasColumnInTable`, whose remote-host form
+    //     is refused outright);
     //   * a call or bare name that reveals the deployment: `version()` and
     //     the dynamic-mode deployment-identity list (`currentDatabase`,
     //     `currentUser`, `user`, `hostName`, `FQDN`, `serverUUID`,
     //     `getMacro`, …).
+    // Implemented by rewriter-grpc's Rewrite and rewriter-go's Service.
     // Every response to a request that sets it reports
     // metadata_access_refusal_applied = true.
     bool refuse_metadata_access = 3;
