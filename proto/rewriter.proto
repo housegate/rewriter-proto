@@ -426,6 +426,32 @@ message RewriteOption {
 message RewriteSQLRequest {
     string sql = 1;
     repeated RewriteOption options = 2;
+    // Opt-in caller policy, independent of the table-rewrite mode: refuse a
+    // statement that reads ClickHouse metadata. Checked on the SQL as sent and
+    // again on the rewritten SQL, so a rewrite option (an injected CTE body,
+    // a table map target) cannot introduce such a read. Meant for static-mode
+    // callers, which the dynamic-mode table-reference policy does not cover.
+    // A refusal has code UnsupportedStatement and message
+    // "metadata access is disabled". Refused:
+    //   * a reference to the `system` or `information_schema` database
+    //     (compared case-insensitively) as a table, a write / DDL / RENAME /
+    //     ALTER target or source, a USE target, or a SHOW COLUMNS / INDEX
+    //     target;
+    //   * SHOW TABLES and SHOW DATABASES;
+    //   * a table function that can reach those databases (`remote`,
+    //     `remoteSecure`, `cluster`, `clusterAllReplicas`, `merge`, `loop`,
+    //     `mergeTreeIndex`, `mergeTreeProjection`, `mergeTreeTextIndex`,
+    //     `mergeTreeAnalyzeIndexes`) unless its database argument is a static
+    //     name outside them;
+    //   * a string lookup naming them (`dictGet*`, `joinGet*`,
+    //     `hasColumnInTable`);
+    //   * a call or bare name that reveals the deployment: `version()` and
+    //     the dynamic-mode deployment-identity list (`currentDatabase`,
+    //     `currentUser`, `user`, `hostName`, `FQDN`, `serverUUID`,
+    //     `getMacro`, …).
+    // Every response to a request that sets it reports
+    // metadata_access_refusal_applied = true.
+    bool refuse_metadata_access = 3;
 }
 
 // Phase-1 signing normalizer. MaterializeSQL runs before the agent/SDK signs a
@@ -791,6 +817,13 @@ message RewriteSQLResponse {
     // `tables` is non-empty, V2 after it accepted any V2 request. Zero for
     // non-SI, inactive (V1 with empty `tables`) or unsupported-version calls.
     StorageIntegrityContractVersion storage_integrity_contract_version = 16;
+
+    // True when the backend honoured RewriteSQLRequest.refuse_metadata_access
+    // for this request. Set on every response path once the request asked for
+    // it, refusals included. A caller that sets the request flag MUST treat a
+    // response with this field false as a refusal: an engine that predates the
+    // flag, or does not implement it, ignores it and leaves this false.
+    bool metadata_access_refusal_applied = 17;
 }
 
 // One table or database the SQL referenced before rewrite, with the
