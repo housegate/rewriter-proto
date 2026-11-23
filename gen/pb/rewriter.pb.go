@@ -115,17 +115,17 @@ const (
 	// DROP TABLE.
 	StorageIntegrityContractVersion_STORAGE_INTEGRITY_CONTRACT_V1 StorageIntegrityContractVersion = 1
 	// Dynamic table set (housegate sub-project 3). Identical to V1 except:
-	//   * the SI surface is active whenever V2 is sent, even with an empty
+	//   - the SI surface is active whenever V2 is sent, even with an empty
 	//     `tables` map, so session SET, SYSTEM and unmodelled statements stay
 	//     refused while no table is active;
-	//   * DROP TABLE [IF EXISTS] of logical SI tables (optionally SYNC, and
+	//   - DROP TABLE [IF EXISTS] of logical SI tables (optionally SYNC, and
 	//     with several targets that may mix SI and ordinary tables) succeeds.
 	//     Each SI target is rewritten to the ordinary physical table that
 	//     database_map gives it; the safe/unsafe tables are untouched, and the
 	//     target stays in original_accessed_tables with is_storage_integrity.
 	//     A physical safe/unsafe target, ON CLUSTER, TRUNCATE, DROP VIEW and
 	//     DROP DICTIONARY of an SI table are still rejected;
-	//   * StorageIntegrityArgs.reserved_databases joins the protected physical
+	//   - StorageIntegrityArgs.reserved_databases joins the protected physical
 	//     namespace, which V1 derives from `tables` alone.
 	StorageIntegrityContractVersion_STORAGE_INTEGRITY_CONTRACT_V2 StorageIntegrityContractVersion = 2
 )
@@ -293,7 +293,7 @@ const (
 	// kind or variant. Housegate refuses the statement; the code
 	// distinguishes "not modelled" from "invalid" for logs and tests.
 	// Cases:
-	//   * Statement-kind level: CREATE VIEW, CREATE DICTIONARY,
+	//   - Statement-kind level: CREATE VIEW, CREATE DICTIONARY,
 	//     CREATE TABLE AS table_function(...), DROP DATABASE,
 	//     DROP VIEW/DICTIONARY, multi-table DROP, TRUNCATE, OPTIMIZE,
 	//     UNDROP, RENAME DATABASE, RENAME DICTIONARY, EXISTS
@@ -303,30 +303,30 @@ const (
 	//     (ATTACH/REPLACE/FETCH PARTITION FROM other,
 	//     MOVE PARTITION TO TABLE other), MOVE,
 	//     BACKUP/RESTORE, KILL, COPY, external DDL, async insert flush.
-	//   * CREATE DATABASE without a TableNameRewrite/dynamic_args option
+	//   - CREATE DATABASE without a TableNameRewrite/dynamic_args option
 	//     to validate against — without context the rewriter can't safely
 	//     emit anything.
-	//   * Static-mode `remote_table_map` hit on a non-SELECT table target —
+	//   - Static-mode `remote_table_map` hit on a non-SELECT table target —
 	//     `remote()` is not a valid INSERT/UPDATE/DELETE/etc. target.
-	//   * GRANT/REVOKE variants the privilege-delta path doesn't model:
-	//       - global scope (`ON *.*`).
-	//       - role-membership grants (`GRANT role TO user`,
-	//         `REVOKE role FROM user`) — note: this only catches the
-	//         dedicated role-membership statement form. A privilege grant
-	//         whose grantee NAME happens to refer to a role
-	//         (`GRANT SELECT ON db.t TO some_role`) cannot be distinguished
-	//         from a user grant at parse time and passes through; the
-	//         downstream auth service is expected to reject unknown names.
-	//       - column-level grants (`GRANT SELECT(c1, c2) ON db.t TO u`) —
-	//         rejected rather than silently broadened to a table-wide
-	//         grant, since dropping the column list would expand privilege
-	//         scope in the audit trail.
-	//       - WITH REPLACE OPTION (destructive replace, not an additive
-	//         delta).
-	//       - REVOKE FROM ALL / REVOKE FROM ALL EXCEPT u1[, u2…]
-	//         (mass revokes don't fit the additive delta model).
-	//       - GRANT CURRENT GRANTS.
-	//   * GRANT/REVOKE without a TableNameRewrite/dynamic_args option to
+	//   - GRANT/REVOKE variants the privilege-delta path doesn't model:
+	//   - global scope (`ON *.*`).
+	//   - role-membership grants (`GRANT role TO user`,
+	//     `REVOKE role FROM user`) — note: this only catches the
+	//     dedicated role-membership statement form. A privilege grant
+	//     whose grantee NAME happens to refer to a role
+	//     (`GRANT SELECT ON db.t TO some_role`) cannot be distinguished
+	//     from a user grant at parse time and passes through; the
+	//     downstream auth service is expected to reject unknown names.
+	//   - column-level grants (`GRANT SELECT(c1, c2) ON db.t TO u`) —
+	//     rejected rather than silently broadened to a table-wide
+	//     grant, since dropping the column list would expand privilege
+	//     scope in the audit trail.
+	//   - WITH REPLACE OPTION (destructive replace, not an additive
+	//     delta).
+	//   - REVOKE FROM ALL / REVOKE FROM ALL EXCEPT u1[, u2…]
+	//     (mass revokes don't fit the additive delta model).
+	//   - GRANT CURRENT GRANTS.
+	//   - GRANT/REVOKE without a TableNameRewrite/dynamic_args option to
 	//     validate against — without context the rewriter can't safely
 	//     emit anything (mirrors CREATE DATABASE / DROP DATABASE).
 	RewriteCode_UnsupportedStatement RewriteCode = 3
@@ -336,26 +336,26 @@ const (
 	// through. Current cases (all in dynamic-mode; static-mode unmatched
 	// targets pass through without rejecting, and SELECT's dynamic walker
 	// is lenient and silently skips unresolvable identifiers):
-	//   * Non-SELECT table-targeting statement (INSERT / UPDATE / DELETE /
+	//   - Non-SELECT table-targeting statement (INSERT / UPDATE / DELETE /
 	//     CREATE TABLE / DROP TABLE / ALTER TABLE / EXISTS TABLE / SHOW
 	//     CREATE TABLE / RENAME TABLE) names a logical database that is
 	//     neither in `dynamic_args.database_map` nor in
 	//     `dynamic_args.known_physical_databases` — the user doesn't have
 	//     that database.
-	//   * Non-SELECT table-targeting statement has no qualifier in the SQL
+	//   - Non-SELECT table-targeting statement has no qualifier in the SQL
 	//     and `dynamic_args.upstream_logical_database_in_context` is empty
 	//     — the rewriter has no way to pick a physical database.
-	//   * USE <db> where <db> is neither in `database_map` nor in
+	//   - USE <db> where <db> is neither in `database_map` nor in
 	//     `known_physical_databases`.
-	//   * CREATE DATABASE <db> where <db> is already in `database_map` and
+	//   - CREATE DATABASE <db> where <db> is already in `database_map` and
 	//     the SQL is not `IF NOT EXISTS`.
-	//   * CREATE DATABASE where `upstream_physical_database_in_context` is
+	//   - CREATE DATABASE where `upstream_physical_database_in_context` is
 	//     set but is not a member of `known_physical_databases`.
-	//   * GRANT or REVOKE names a logical database that is neither in
+	//   - GRANT or REVOKE names a logical database that is neither in
 	//     `dynamic_args.database_map` nor in
 	//     `dynamic_args.known_physical_databases` — the user doesn't have
 	//     that database to grant on.
-	//   * GRANT or REVOKE has a bare table identifier (no qualifier) and
+	//   - GRANT or REVOKE has a bare table identifier (no qualifier) and
 	//     `dynamic_args.upstream_logical_database_in_context` is empty —
 	//     the rewriter has no way to pick a logical/physical database.
 	RewriteCode_InvalidRewriteRequest RewriteCode = 4
@@ -1853,22 +1853,23 @@ type RewriteSQLRequest struct {
 	// callers, which the dynamic-mode table-reference policy does not cover.
 	// A refusal has code UnsupportedStatement and message
 	// "metadata access is disabled". Refused:
-	//   * a reference to the `system` or `information_schema` database
+	//   - a reference to the `system` or `information_schema` database
 	//     (compared case-insensitively) as a table, a write / DDL / RENAME /
 	//     ALTER target or source, a USE target, or a SHOW COLUMNS / INDEX
 	//     target;
-	//   * SHOW TABLES and SHOW DATABASES;
-	//   * a table function that can reach those databases (`remote`,
+	//   - SHOW TABLES and SHOW DATABASES;
+	//   - a table function that can reach those databases (`remote`,
 	//     `remoteSecure`, `cluster`, `clusterAllReplicas`, `merge`, `loop`,
 	//     `mergeTreeIndex`, `mergeTreeProjection`, `mergeTreeTextIndex`,
 	//     `mergeTreeAnalyzeIndexes`) unless its database argument is a static
 	//     name outside them;
-	//   * a string lookup naming them (`dictGet*`, `joinGet*`,
+	//   - a string lookup naming them (`dictGet*`, `joinGet*`,
 	//     `hasColumnInTable`);
-	//   * a call or bare name that reveals the deployment: `version()` and
+	//   - a call or bare name that reveals the deployment: `version()` and
 	//     the dynamic-mode deployment-identity list (`currentDatabase`,
 	//     `currentUser`, `user`, `hostName`, `FQDN`, `serverUUID`,
 	//     `getMacro`, …).
+	//
 	// Every response to a request that sets it reports
 	// metadata_access_refusal_applied = true.
 	RefuseMetadataAccess bool `protobuf:"varint,3,opt,name=refuse_metadata_access,json=refuseMetadataAccess,proto3" json:"refuse_metadata_access,omitempty"`
@@ -2335,21 +2336,21 @@ type RewriteSQLResponse struct {
 	// original SQL referenced, in structured form so callers don't have to
 	// parse dotted strings. Populated by:
 	//
-	//   * SELECT — one entry per ASTTableExpression, including CTE bodies;
+	//   - SELECT — one entry per ASTTableExpression, including CTE bodies;
 	//     CTE alias entries are replaced by the tables their bodies
 	//     reference.
-	//   * IN / GLOBAL IN table operands, the SELECT body of INSERT … SELECT
+	//   - IN / GLOBAL IN table operands, the SELECT body of INSERT … SELECT
 	//     and of CREATE TABLE … AS SELECT — one entry per source table,
 	//     listed after the statement's own target(s). Within each response
 	//     the entries that are not a write target are key-sorted by
 	//     (original_database, original_table) as written — the order both
 	//     engines' map-backed collectors produce — not statement order; a
 	//     SELECT-family statement has no target, so its whole list is sorted.
-	//   * Non-SELECT single-target handlers (writes / EXISTS / SHOW
+	//   - Non-SELECT single-target handlers (writes / EXISTS / SHOW
 	//     CREATE / RENAME) — one entry per (db, table) target processed.
 	//     RENAME records both `from` and `to`; `CREATE TABLE AS source`
 	//     records both target and source.
-	//   * CREATE DATABASE / DROP DATABASE — one db-level entry with
+	//   - CREATE DATABASE / DROP DATABASE — one db-level entry with
 	//     `original_table` empty and `logical_database` set to the target
 	//     db. `physical_database` is filled when the logical resolves via
 	//     `dynamic_args.database_map` (typically true for DROP, typically
@@ -2672,13 +2673,17 @@ type PrivilegeDelta struct {
 	OriginalTable string `protobuf:"bytes,6,opt,name=original_table,json=originalTable,proto3" json:"original_table,omitempty"`
 	// SCOPE_TABLE only — physical table name constructed via the same
 	// rule the table-targeting handlers use:
-	//   logical + delim + (extras + delim, iff non-empty) + original_table
+	//
+	//	logical + delim + (extras + delim, iff non-empty) + original_table
+	//
 	// Empty for SCOPE_DATABASE.
 	PhysicalTable string `protobuf:"bytes,7,opt,name=physical_table,json=physicalTable,proto3" json:"physical_table,omitempty"`
 	// Privilege names exactly as ClickHouse's parser emits them:
-	//   "SELECT", "INSERT", "ALTER UPDATE", "ALTER DELETE",
-	//   "ALTER ADD COLUMN", "CREATE TABLE", "DROP TABLE", "TRUNCATE",
-	//   "OPTIMIZE", "SHOW TABLES", "dictGet", "ALL", ...
+	//
+	//	"SELECT", "INSERT", "ALTER UPDATE", "ALTER DELETE",
+	//	"ALTER ADD COLUMN", "CREATE TABLE", "DROP TABLE", "TRUNCATE",
+	//	"OPTIMIZE", "SHOW TABLES", "dictGet", "ALL", ...
+	//
 	// Preserved verbatim — the rewriter does NOT collapse these into a
 	// smaller taxonomy. Downstream owns that mapping.
 	Privileges []string `protobuf:"bytes,8,rep,name=privileges,proto3" json:"privileges,omitempty"`
